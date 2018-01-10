@@ -90,8 +90,13 @@ public static class Injector {
         foreach (ModuleDefinition module in assembly.Modules) {
             Console.WriteLine("Module: " + module.FullyQualifiedName);
 
-            // Here we go hunting for classes, methods, and other bits of IL that we want to inject into
-
+            /*
+             * Here we go hunting for classes, methods, and other bits of IL that we want to inject into
+             * 
+             * In this case we want to inject code that loads our MyMod assembly as soon as
+             * the game runs RainWorld.Start(), and then calls a method from that mod.
+             */
+            
             foreach (TypeDefinition type in module.Types) {
                 if (type.Name.Equals("RainWorld")) {
                     Console.WriteLine("Found RainWorld class: " + module.FullyQualifiedName);
@@ -103,34 +108,51 @@ public static class Injector {
 
                                 ILProcessor ilProcessor = method.Body.GetILProcessor();
 
-                                // Create the hook to Assembly.Load
+                                /* 
+                                 * Create the hook to Assembly.Load
+                                 */
+
                                 MethodReference assemblyLoadFunction = module.Import(
                                     typeof(System.Reflection.Assembly).GetMethod(
                                         "LoadFrom",
                                         new [] { typeof(string) }));
 
-                                // Insert the call to load our mod assembly
+                                /*
+                                 * Insert the call to load our mod assembly
+                                 * Todo: This should scan mod dir, load .dlls in order
+                                 */
+
                                 Instruction first = method.Body.Instructions[0];
                                 ilProcessor.InsertBefore(first, Instruction.Create(
                                     OpCodes.Ldstr,
                                     Path.Combine(AssemblyFolder, "MyMod.dll")));
                                 ilProcessor.InsertBefore(first, Instruction.Create(OpCodes.Call, assemblyLoadFunction));
 
-                                // Now RainWorld.Start loads our MyMod.dll
+                                /* 
+                                 * Now RainWorld.Start() should load our MyMod.dll assembly before
+                                 * any other code runs! Great!
+                                 * 
+                                 * Next we need to insert a call to our custom mod code...
+                                 */
 
-                                // Next we need to insert a call to our mod code...
+                                // Create the hook to our mod method
 
-                                // Create the hook our mod method
                                 MethodReference myModFunction = module.Import(
                                     typeof(MyMod).GetMethod(
                                         "RegisterLogCallback",
                                         BindingFlags.Public | BindingFlags.Static));
 
                                 // Insert the call to our mod method
-                                first = method.Body.Instructions[0]; // This should point to Assembly.LoadFrom
+
+                                first = method.Body.Instructions[0]; // This should nowpoint to Assembly.LoadFrom
                                 ilProcessor.InsertAfter(first, Instruction.Create(OpCodes.Call, myModFunction));
 
-                                // Now we should have our logging feature injected into the game! :D
+                                /* 
+                                 * That's it!
+                                 * 
+                                 * The game now loads our MyMod assembly and executes the provided entrypoint,
+                                 * which in turn registers the logging methods, or whatever the mod wants to do.
+                                 */
                             }
                         }
                         catch (Exception e) {
