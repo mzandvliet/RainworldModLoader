@@ -1,0 +1,5 @@
+*.user
+.vs/
+MyMod/obj/
+RainWorldInject/bin/
+RainWorldInject/obj/
