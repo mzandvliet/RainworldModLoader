@@ -3,6 +3,8 @@ Proof of concept Rainworld Mod Loader (meaning not usable, but with extra work i
 
 If you are a mod developer, please do get in touch and provide feedback!
 
+(This same approach could be used to create mod loaders for any Unity game, really.)
+
 # Why?
 
 The existing approach to modding Rainworld is to load the game's dotnet assembly using a tool called dnSpy, which lets you see decompiled source. You then have to edit the low level IL assembly code to do anything, deal with all sorts of cryptic errors, and after that your code is stuffed into the game DLL. This workflow is not great for writing big modifications.
