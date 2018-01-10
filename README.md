@@ -1,5 +1,7 @@
 # RainworldModLoader
-Proof of concept Rainworld Mod Loader
+Proof of concept Rainworld Mod Loader (meaning not usable, but with extra work it could be)
+
+If you are a mod developer, please do get in touch and provide feedback!
 
 # Why?
 
