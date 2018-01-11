@@ -20,7 +20,8 @@ It tells the game to output debug messages to a text log. I put this code into a
 
 If this is polished up a bit, it could patch the game with generic hooks for mods to register themselves to, so your mod code could register to be called on update, on level start, or whatever else. 
 
-Two big wins:
+Three big wins:
 
-- The game can easily load multiple mods at once. (providing they don't conflict)
+- The game could load multiple mods at once. (providing they don't conflict, which requires some developer care)
 - You can write your code in visual studio, in C#, organize it into separate DLLs, have dependencies, use source control, and so on.
+- Mods and modding APIs don't need to redistribute copyrighted code in Assembly-CSharp, but can be locally applied as a patch to your game install. The Hollow Knight modding community discusses this issue here: https://gist.github.com/thejoshwolfe/db369bebf6518227c830fffee12ddbec
