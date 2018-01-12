@@ -15,8 +15,7 @@ I still had a program around for doing code injection in Unity from when I wante
 
 An injector program which takes the vanilla game dll, injects a small mod loader routine. That mod loader can then load custom DLLs with mod-only code, and get the game to call into it. This only has to be done once, and the resulting assembly could be redistributed to players to enable modding for them.
 
-As a trivial example mod I took this snippet: http://rain-world-modding.wikia.com/wiki/Adding_an_Exception_Handler.
-It tells the game to output debug messages to a text log. I put this code into a separate assembly project (MyMod), and the game now loads that DLL at startup, if it finds it in the game folder.
+The ModLoader now looks for mod assemblies in the Rainworld/Mods folder. Anything called *******Mod.dll* that contains an implementation of the IMod interface gets loaded. IMod is too barebones for actual modding, but it demonstrates how this will work in the end.
 
 If this is polished up a bit, it could patch the game with generic hooks for mods to register themselves to, so your mod code could register to be called on update, on level start, or whatever else. 
 
