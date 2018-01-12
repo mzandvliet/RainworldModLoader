@@ -22,7 +22,9 @@ namespace RainWorldInject {
         static void Main(string[] args) {
             Injector.Inject();
 
+            Console.WriteLine();
             Console.WriteLine("All done!");
+            Console.WriteLine("Press any key to exit...");
             Console.ReadLine();
         }
     }

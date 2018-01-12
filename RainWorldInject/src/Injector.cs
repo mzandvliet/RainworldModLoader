@@ -1,14 +1,8 @@
-﻿using Mono.Cecil;
-using Mono.Cecil.Cil;
-using System;
+﻿using System;
 using System.IO;
 using System.Reflection;
-
-/// Rain World mod loader concept
-/// 
-/// Based on: http://www.codersblock.org/blog//2014/06/integrating-monocecil-with-unity.html
-/// 
-/// Created by Martijn Zandvliet, 10/01/2017
+using Mono.Cecil;
+using Mono.Cecil.Cil;
 
 /* Todo:
  * - Generalized mod loading routine: scan file system for mod dlls, load them in order
@@ -16,158 +10,167 @@ using System.Reflection;
  * to update (e.g. player jump, level load, etc.)
  */
 
-public static class Injector {
-    public const string RootFolder = "D:\\Games\\SteamLibrary\\steamapps\\common\\Rain World";
-    public const string AssemblyFolder = "D:\\Games\\SteamLibrary\\steamapps\\common\\Rain World\\RainWorld_Data\\Managed";
+namespace RainWorldInject {
+    /// Rain World assembly code injector
+    /// Injects hooks to a mod loader
+    /// 
+    /// Based on: http://www.codersblock.org/blog//2014/06/integrating-monocecil-with-unity.html
+    /// 
+    /// Created by Martijn Zandvliet, 10/01/2017
+    public static class Injector {
+        public const string RootFolder = "D:\\Games\\SteamLibrary\\steamapps\\common\\Rain World";
+        public const string AssemblyFolder = "D:\\Games\\SteamLibrary\\steamapps\\common\\Rain World\\RainWorld_Data\\Managed";
 
-    public static void Inject() {
-        Console.WriteLine("Injector running...");
+        public static void Inject() {
+            Console.WriteLine("Injector running...");
 
-        string unpatchedAssemblyPath = Path.Combine(AssemblyFolder, "Assembly-CSharp-Original.dll");
-        string patchedAssemblyPath = Path.Combine(AssemblyFolder, "Assembly-CSharp.dll");
+            string unpatchedAssemblyPath = Path.Combine(AssemblyFolder, "Assembly-CSharp-Original.dll");
+            string patchedAssemblyPath = Path.Combine(AssemblyFolder, "Assembly-CSharp.dll");
 
-        // Create resolver
-        DefaultAssemblyResolver assemblyResolver = new DefaultAssemblyResolver();
-        assemblyResolver.AddSearchDirectory(AssemblyFolder);
+            // Create resolver
+            DefaultAssemblyResolver assemblyResolver = new DefaultAssemblyResolver();
+            assemblyResolver.AddSearchDirectory(AssemblyFolder);
 
-        // Create reader parameters with resolver
-        ReaderParameters readerParameters = new ReaderParameters();
-        readerParameters.AssemblyResolver = assemblyResolver;
+            // Create reader parameters with resolver
+            ReaderParameters readerParameters = new ReaderParameters();
+            readerParameters.AssemblyResolver = assemblyResolver;
 
-        // Create writer parameters
-        WriterParameters writerParameters = new WriterParameters();
+            // Create writer parameters
+            WriterParameters writerParameters = new WriterParameters();
 
-        // Process the game assembly
-      
-        // mdbs have the naming convention myDll.dll.mdb whereas pdbs have myDll.pdb
-        String mdbPath = unpatchedAssemblyPath + ".mdb";
-        String pdbPath = unpatchedAssemblyPath.Substring(0, unpatchedAssemblyPath.Length - 3) + "pdb";
+            // Process the game assembly
 
-        // Figure out if there's an pdb/mdb to go with it
-        if (File.Exists(pdbPath)) {
-            readerParameters.ReadSymbols = true;
-            readerParameters.SymbolReaderProvider = new Mono.Cecil.Pdb.PdbReaderProvider();
-            writerParameters.WriteSymbols = true;
-            writerParameters.SymbolWriterProvider = new Mono.Cecil.Mdb.MdbWriterProvider(); // pdb written out as mdb, as mono can't work with pdbs
+            // mdbs have the naming convention myDll.dll.mdb whereas pdbs have myDll.pdb
+            String mdbPath = unpatchedAssemblyPath + ".mdb";
+            String pdbPath = unpatchedAssemblyPath.Substring(0, unpatchedAssemblyPath.Length - 3) + "pdb";
+
+            // Figure out if there's an pdb/mdb to go with it
+            if (File.Exists(pdbPath)) {
+                readerParameters.ReadSymbols = true;
+                readerParameters.SymbolReaderProvider = new Mono.Cecil.Pdb.PdbReaderProvider();
+                writerParameters.WriteSymbols = true;
+                writerParameters.SymbolWriterProvider = new Mono.Cecil.Mdb.MdbWriterProvider(); // pdb written out as mdb, as mono can't work with pdbs
+            }
+            else if (File.Exists(mdbPath)) {
+                readerParameters.ReadSymbols = true;
+                readerParameters.SymbolReaderProvider = new Mono.Cecil.Mdb.MdbReaderProvider();
+                writerParameters.WriteSymbols = true;
+                writerParameters.SymbolWriterProvider = new Mono.Cecil.Mdb.MdbWriterProvider();
+            }
+            else {
+                readerParameters.ReadSymbols = false;
+                readerParameters.SymbolReaderProvider = null;
+                writerParameters.WriteSymbols = false;
+                writerParameters.SymbolWriterProvider = null;
+            }
+
+            // Read assembly
+            AssemblyDefinition assembly = AssemblyDefinition.ReadAssembly(unpatchedAssemblyPath, readerParameters);
+
+            // Process it if it hasn't already
+            Console.WriteLine("Processing " + Path.GetFileName(unpatchedAssemblyPath) + "...");
+
+            try {
+                ProcessAssembly(assembly);
+            }
+            catch (Exception e) {
+                // Skip writing if any exception occurred
+                Console.WriteLine("!! Exception while processing assembly: " + assembly.FullName + ", " + e.Message);
+                return;
+            }
+
+            // Write the patched assembly to the game directory
+            if (File.Exists(patchedAssemblyPath)) {
+                File.Delete(patchedAssemblyPath);
+            }
+            Console.WriteLine("Writing to " + patchedAssemblyPath + "...");
+            assembly.Write(patchedAssemblyPath, writerParameters);
         }
-        else if (File.Exists(mdbPath)) {
-            readerParameters.ReadSymbols = true;
-            readerParameters.SymbolReaderProvider = new Mono.Cecil.Mdb.MdbReaderProvider();
-            writerParameters.WriteSymbols = true;
-            writerParameters.SymbolWriterProvider = new Mono.Cecil.Mdb.MdbWriterProvider();
-        }
-        else {
-            readerParameters.ReadSymbols = false;
-            readerParameters.SymbolReaderProvider = null;
-            writerParameters.WriteSymbols = false;
-            writerParameters.SymbolWriterProvider = null;
-        }
 
-        // Read assembly
-        AssemblyDefinition assembly = AssemblyDefinition.ReadAssembly(unpatchedAssemblyPath, readerParameters);
+        private static void ProcessAssembly(AssemblyDefinition assembly) {
+            foreach (ModuleDefinition module in assembly.Modules) {
+                Console.WriteLine("Module: " + module.FullyQualifiedName);
 
-        // Process it if it hasn't already
-        Console.WriteLine("Processing " + Path.GetFileName(unpatchedAssemblyPath) + "...");
+                /*
+                 * Here we go hunting for classes, methods, and other bits of IL that we want to inject into
+                 * 
+                 * In this case we want to inject code that loads our MyMod assembly as soon as
+                 * the game runs RainWorld.Start(), and then calls a method from that mod.
+                 */
 
-        try {
-            ProcessAssembly(assembly);
-        }
-        catch (Exception e) {
-            // Skip writing if any exception occurred
-            Console.WriteLine("!! Exception while processing assembly: " + assembly.FullName + ", " + e.Message);
-            return;
-        }
+                foreach (TypeDefinition type in module.Types) {
+                    if (type.Name.Equals("RainWorld")) {
+                        Console.WriteLine("Found RainWorld class: " + module.FullyQualifiedName);
 
-        // Write the patched assembly to the game directory
-        if (File.Exists(patchedAssemblyPath)) {
-            File.Delete(patchedAssemblyPath);
-        }
-        Console.WriteLine("Writing to " + patchedAssemblyPath + "...");
-        assembly.Write(patchedAssemblyPath, writerParameters);
-    }
+                        foreach (MethodDefinition method in type.Methods) {
+                            try {
+                                if (method.Name == "Start") {
+                                    Console.WriteLine("Found method: " + method.Name);
 
-    private static void ProcessAssembly(AssemblyDefinition assembly) {
-        foreach (ModuleDefinition module in assembly.Modules) {
-            Console.WriteLine("Module: " + module.FullyQualifiedName);
+                                    ILProcessor il = method.Body.GetILProcessor();
 
-            /*
-             * Here we go hunting for classes, methods, and other bits of IL that we want to inject into
-             * 
-             * In this case we want to inject code that loads our MyMod assembly as soon as
-             * the game runs RainWorld.Start(), and then calls a method from that mod.
-             */
-            
-            foreach (TypeDefinition type in module.Types) {
-                if (type.Name.Equals("RainWorld")) {
-                    Console.WriteLine("Found RainWorld class: " + module.FullyQualifiedName);
+                                    /* 
+                                     * Create the instruction for Assembly.Load
+                                     */
 
-                    foreach (MethodDefinition method in type.Methods) {
-                        try {
-                            if (method.Name == "Start") {
-                                Console.WriteLine("Found method: " + method.Name);
+                                    MethodReference assemblyLoadFunc = module.Import(
+                                        typeof(System.Reflection.Assembly).GetMethod(
+                                            "LoadFrom",
+                                            new[] { typeof(string) }));
 
-                                ILProcessor ilProcessor = method.Body.GetILProcessor();
+                                    /*
+                                     * Insert the call to load our ModLoader assembly
+                                     */
 
-                                /* 
-                                 * Create the hook to Assembly.Load
-                                 */
+                                    string modLoaderAssemblyPath = Path.Combine(AssemblyFolder, "ModLoader.dll");
 
-                                MethodReference assemblyLoadFunction = module.Import(
-                                    typeof(System.Reflection.Assembly).GetMethod(
-                                        "LoadFrom",
-                                        new [] { typeof(string) }));
+                                    Instruction firstInstr = method.Body.Instructions[0];
+                                    Instruction loadStringInstr = Instruction.Create(OpCodes.Ldstr, modLoaderAssemblyPath);
+                                    il.InsertBefore(firstInstr, loadStringInstr);
 
-                                /*
-                                 * Insert the call to load our mod assembly
-                                 * Todo: This should scan mod dir, load .dlls in order
-                                 */
+                                    Instruction loadAssemblyInstr = Instruction.Create(OpCodes.Call, assemblyLoadFunc);
+                                    il.InsertAfter(loadStringInstr, loadAssemblyInstr);
 
-                                Instruction first = method.Body.Instructions[0];
-                                ilProcessor.InsertBefore(first, Instruction.Create(
-                                    OpCodes.Ldstr,
-                                    Path.Combine(AssemblyFolder, "MyMod.dll")));
-                                ilProcessor.InsertBefore(first, Instruction.Create(OpCodes.Call, assemblyLoadFunction));
+                                    /* 
+                                     * Now RainWorld.Start() should load our ModLoader.dll assembly before
+                                     * any other code runs! Great!
+                                     * 
+                                     * Next we need to call its initialize method and pass it a ref to the
+                                     * RainWorld instance's this reference.
+                                     */
+                                    
 
-                                /* 
-                                 * Now RainWorld.Start() should load our MyMod.dll assembly before
-                                 * any other code runs! Great!
-                                 * 
-                                 * Next we need to insert a call to our custom mod code...
-                                 */
+                                    // Push rainworld this reference onto eval stack so we can pass it along
+                                    Instruction pushRainworldRefInstr = Instruction.Create(OpCodes.Ldarg_0);
+                                    il.InsertAfter(loadAssemblyInstr, pushRainworldRefInstr);
 
-                                // Create the hook to our mod method
+                                    MethodReference initializeFunc = module.Import(typeof(Modding.ModLoader).GetMethod("Initialize"));
 
-                                MethodReference myModFunction = module.Import(
-                                    typeof(MyMod).GetMethod(
-                                        "RegisterLogCallback",
-                                        BindingFlags.Public | BindingFlags.Static));
+                                    Instruction callModInstr = Instruction.Create(OpCodes.Call, initializeFunc);
+                                    il.InsertAfter(pushRainworldRefInstr, callModInstr);
 
-                                // Insert the call to our mod method
-
-                                first = method.Body.Instructions[0]; // This should nowpoint to Assembly.LoadFrom
-                                ilProcessor.InsertAfter(first, Instruction.Create(OpCodes.Call, myModFunction));
-
-                                /* 
-                                 * That's it!
-                                 * 
-                                 * The game now loads our MyMod assembly and executes the provided entrypoint,
-                                 * which in turn registers the logging methods, or whatever the mod wants to do.
-                                 */
+                                    /* 
+                                     * That's it!
+                                     * 
+                                     * The game now loads our ModLoader, which in turn will
+                                     * load any number of mods found in the Mods directory.
+                                     */
+                                }
                             }
-                        }
-                        catch (Exception e) {
-                            Console.WriteLine("!! Failed on: " + type.Name + "." + method.Name + ": " + e.Message);
+                            catch (Exception e) {
+                                Console.WriteLine("!! Failed on: " + type.Name + "." + method.Name + ": " + e.Message);
+                            }
                         }
                     }
                 }
             }
         }
     }
-}
 
-/// <summary>
-/// Used to mark modules in assemblies as already patched.
-/// </summary>
-[AttributeUsage(AttributeTargets.Module)]
-public class RainworldAssemblyAlreadyPatchedAttribute : Attribute {
+    /// <summary>
+    /// Used to mark modules in assemblies as already patched.
+    /// </summary>
+    [AttributeUsage(AttributeTargets.Module)]
+    public class RainworldAssemblyAlreadyPatchedAttribute : Attribute {
+    }
 }
