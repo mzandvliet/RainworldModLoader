@@ -1,7 +1,7 @@
 # RainworldModLoader
 Proof of concept Rainworld Mod Loader (meaning not usable, but with extra work it could be)
 
-If you are a mod developer, please do get in touch and provide feedback!
+If you are a mod developer, please do get in touch and provide feedback! I'm on the Rainworld Discord in #modding, https://discordapp.com/invite/SBmHbpW
 
 (This same approach could be used to create mod loaders for any Unity game, really.)
 
