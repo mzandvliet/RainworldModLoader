@@ -1,5 +1,0 @@
-D:\Games\SteamLibrary\steamapps\common\Rain World\RainWorld_Data\Managed\ModLoader.dll
-D:\Games\SteamLibrary\steamapps\common\Rain World\RainWorld_Data\Managed\ModLoader.pdb
-E:\code\unity\RainWorldModLoader\ModLoader\obj\Debug\Modding.csprojResolveAssemblyReference.cache
-E:\code\unity\RainWorldModLoader\ModLoader\obj\Debug\ModLoader.dll
-E:\code\unity\RainWorldModLoader\ModLoader\obj\Debug\ModLoader.pdb
