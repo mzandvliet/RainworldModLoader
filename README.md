@@ -21,7 +21,7 @@ An injector program takes the vanilla game dll and injects a small mod loader ro
 
 The mod loader will then load custom DLLs with mod-only code when the game starts up, and get the game to call into it.
 
-The loader looks for mod assemblies in the Rainworld/Mods folder. Anything called *******Mod.dll* that contains an implementation of the modding interface gets loaded.
+The loader looks for mod assemblies in the Rainworld/Mods folder. Anything called *******Mod.dll* that contains an implementation of the modding interface gets loaded. Any static class that has a static void Initialize() and a name that ends with *******Mod* will have that method called.
 
 The [Harmony](https://github.com/pardeike/Harmony/wiki) framework is currently used to inject your mod hooks into the game's code. Check out the provided example mod projects to see how it's done.
 
