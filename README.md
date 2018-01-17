@@ -45,6 +45,6 @@ You should now have a VS2017 solution that patches your game when ran, builds th
 
 # Debugging
 
-For debugging I still recommend using [dnSpy](https://github.com/0xd4d/dnSpy/wiki/Debugging-Unity-Games). If you load the game's assembly in there, and manually add your installed mod assemblies, and then launch the game through dnSpy's debug menu, its debugger works like a dream.
+For debugging I still recommend using [dnSpy](https://github.com/0xd4d/dnSpy/wiki/Debugging-Unity-Games). If you load the game's assembly in there, and manually add your installed mod assemblies, and then launch the game through dnSpy's debug menu, its debugger works like a charm.
 
 I've tried getting VS2017's debugging tools to work with the game, but haven't managed it yet. And besides, dnSpy's decompiled code is nicer to read.
