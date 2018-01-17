@@ -1,6 +1,6 @@
 ![](https://i.imgur.com/KSE4URu.gif)
 
-(Example: Slugcat Camo Mod by LodeRunner + Co-op Mod by OriginalSINe, both running through this mod loader)
+(Example: Slugcat Camo Mod by LodeRunner + Co-op Mod by OriginalSINe, both running through this mod loader. Check out [RainDB.net](http://www.raindb.net) for more released mods, which may some day be made compatible with this loader.)
 
 # RainworldModLoader
 Proof of concept Rainworld Mod Loader, almost at a state of being very useful.
@@ -21,7 +21,7 @@ An injector program takes the vanilla game dll and injects a small mod loader ro
 
 The mod loader will then load custom DLLs with mod-only code when the game starts up, and get the game to call into it.
 
-The loader looks for mod assemblies in the Rainworld/Mods folder. Anything called *******Mod.dll* that contains an implementation of the modding interface gets loaded.
+The loader looks for mod assemblies in the Rainworld/Mods folder. Anything called *******Mod.dll* that contains an implementation of the modding interface gets loaded. Any static class that has a static void Initialize() and a name that ends with *******Mod* will have that method called.
 
 The [Harmony](https://github.com/pardeike/Harmony/wiki) framework is currently used to inject your mod hooks into the game's code. Check out the provided example mod projects to see how it's done.
 
@@ -46,6 +46,8 @@ Paths to important game folders are currently still hardcoded into the code and 
 Injector also expects you to have made a backup of Assembly-CSharp.dll in the same folder, called Assembly-CSharp-Original.dll. It will do this automatically in the future.
 
 You should now have a VS2017 solution that patches your game when ran, builds the mod assemblies and puts them in the game mod folder.
+
+*Note: currently this project contains multiple example mods which will eventually migrate to their own repositories. They're purely there to help quickly iterate on the mod api design. You can delete them, overwrite them, or enable/disable them in the solution's build configuration.*
 
 # Debugging
 
