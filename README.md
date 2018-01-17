@@ -29,4 +29,8 @@ Three big wins:
 - You can write your code in visual studio, in C#, organize it into separate DLLs, have dependencies, use source control, and so on.
 - Mods and modding APIs don't need to redistribute copyrighted code in Assembly-CSharp, but can be locally applied as a patch to your game install with an easy to use patching program. The Hollow Knight modding community discusses this issue here: https://gist.github.com/thejoshwolfe/db369bebf6518227c830fffee12ddbec
 
+# Debugging
+
 For debugging I still recommend using [dnSpy](https://github.com/0xd4d/dnSpy/wiki/Debugging-Unity-Games). If you load the game's assembly in there, and manually add your installed mod assemblies, and then launch the game through dnSpy's debug menu, its debugger works like a dream.
+
+I've tried getting VS2017's debugging tools to work with the game, but haven't managed it yet. And besides, dnSpy's decompiled code is nicer to read.
