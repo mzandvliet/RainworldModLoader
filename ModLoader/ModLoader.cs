@@ -11,7 +11,7 @@ using UnityEngine;
 
 namespace Modding {
     public static class ModLoader {
-        private static readonly List<IMod> _loadedMods = new List<IMod>();
+//        private static readonly List<IMod> _loadedMods = new List<IMod>();
 
         public static void Initialize(RainWorld rainworld) {
             ModLogger.EnableLogging();
@@ -25,25 +25,17 @@ namespace Modding {
             for (int i = 0; i < modDirs.Length; i++) {
                 var assembly = LoadModAssemblyFromDirectory(modDirs[i]);
                 if (assembly != null) {
-                    var mod = LoadModFromAssembly(assembly);
-                    if (mod != null) {
-                        Debug.Log("Initializing this mod...");
-                        _loadedMods.Add(mod);
-                        mod.Init(rainworld);
-                    }
-                    else {
-                        Debug.LogError("Failed to load mod from assembly, skipping...");
-                    }
+                    LoadModFromAssembly(assembly);
                 }
                 else {
                     Debug.LogError("Failed to load mod assembly, skipping...");
                 }
             }
 
-            Debug.Log("Loaded mods: ");
-            for (int i = 0; i < _loadedMods.Count; i++) {
-                Debug.Log("" + i + ": " + _loadedMods[i]);
-            }
+//            Debug.Log("Loaded mods: ");
+//            for (int i = 0; i < _loadedMods.Count; i++) {
+//                Debug.Log("" + i + ": " + _loadedMods[i]);
+//            }
         }
 
         private static string GetGameRootPath() {
@@ -67,17 +59,19 @@ namespace Modding {
             return null;
         }
 
-        private static IMod LoadModFromAssembly(Assembly assembly) {
-            // For now, this just returns the first IMod it finds
-
+        private static void LoadModFromAssembly(Assembly assembly) {
             foreach (Module module in assembly.GetModules()) {
                 foreach (Type type in module.GetTypes()) {
-                    if (type.GetInterfaces().Contains(typeof(IMod))) {
+                    if (type.Name.EndsWith("Mod")) { // Todo: lol, make more rigorous
                         Console.WriteLine("Found Mod Entrypoint! " + type.FullName);
 
                         try {
-                            IMod mod = (IMod) Activator.CreateInstance(type);
-                            return mod;
+                            var initMethod = type.GetMethod("Initialize");
+                            if (initMethod == null) {
+                                Debug.LogError("Couldn't find a public static Intialize() method on mod");
+                                return;
+                            }
+                            initMethod.Invoke(null, null);
                         }
                         catch (Exception e) {
                             Debug.LogError($"Something went wrong loading {type.FullName}, {e.Message}");
@@ -85,17 +79,15 @@ namespace Modding {
                     }
                 }
             }
-
-            return null;
         }
     }
 
-    public interface IMod {
-        string Name { get; }
-        string Version { get; }
-
-        void Init(RainWorld rainworld);
-    }
+//    public interface IMod {
+//        string Name { get; }
+//        string Version { get; }
+//
+//        void Init(RainWorld rainworld);
+//    }
 
     public static class ModLogger {
         public static void EnableLogging() {

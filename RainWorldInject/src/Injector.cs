@@ -8,6 +8,9 @@ using Mono.Cecil.Cil;
  * - Generalized mod loading routine: scan file system for mod dlls, load them in order
  * - Instrument vanilla game code with calls into mods, so that mods can specify where/when
  * to update (e.g. player jump, level load, etc.)
+ * 
+ * - Mechanism for targeting specific parts of game code for instrumentation, so I can hook
+ * into updates for all sorts of things.
  */
 
 namespace RainWorldInject {
@@ -105,56 +108,7 @@ namespace RainWorldInject {
                         foreach (MethodDefinition method in type.Methods) {
                             try {
                                 if (method.Name == "Start") {
-                                    Console.WriteLine("Found method: " + method.Name);
-
-                                    ILProcessor il = method.Body.GetILProcessor();
-
-                                    /* 
-                                     * Create the instruction for Assembly.Load
-                                     */
-
-                                    MethodReference assemblyLoadFunc = module.Import(
-                                        typeof(System.Reflection.Assembly).GetMethod(
-                                            "LoadFrom",
-                                            new[] { typeof(string) }));
-
-                                    /*
-                                     * Insert the call to load our ModLoader assembly
-                                     */
-
-                                    string modLoaderAssemblyPath = Path.Combine(AssemblyFolder, "ModLoader.dll");
-
-                                    Instruction firstInstr = method.Body.Instructions[0];
-                                    Instruction loadStringInstr = Instruction.Create(OpCodes.Ldstr, modLoaderAssemblyPath);
-                                    il.InsertBefore(firstInstr, loadStringInstr);
-
-                                    Instruction loadAssemblyInstr = Instruction.Create(OpCodes.Call, assemblyLoadFunc);
-                                    il.InsertAfter(loadStringInstr, loadAssemblyInstr);
-
-                                    /* 
-                                     * Now RainWorld.Start() should load our ModLoader.dll assembly before
-                                     * any other code runs! Great!
-                                     * 
-                                     * Next we need to call its initialize method and pass it a ref to the
-                                     * RainWorld instance's this reference.
-                                     */
-                                    
-
-                                    // Push rainworld this reference onto eval stack so we can pass it along
-                                    Instruction pushRainworldRefInstr = Instruction.Create(OpCodes.Ldarg_0);
-                                    il.InsertAfter(loadAssemblyInstr, pushRainworldRefInstr);
-
-                                    MethodReference initializeFunc = module.Import(typeof(Modding.ModLoader).GetMethod("Initialize"));
-
-                                    Instruction callModInstr = Instruction.Create(OpCodes.Call, initializeFunc);
-                                    il.InsertAfter(pushRainworldRefInstr, callModInstr);
-
-                                    /* 
-                                     * That's it!
-                                     * 
-                                     * The game now loads our ModLoader, which in turn will
-                                     * load any number of mods found in the Mods directory.
-                                     */
+                                    InstrumentRainworldStartMethod(method, module);
                                 }
                             }
                             catch (Exception e) {
@@ -164,6 +118,59 @@ namespace RainWorldInject {
                     }
                 }
             }
+        }
+
+        private static void InstrumentRainworldStartMethod(MethodDefinition method, ModuleDefinition module) {
+            Console.WriteLine("Found method: " + method.Name);
+
+            ILProcessor il = method.Body.GetILProcessor();
+
+            /* 
+            * Create the instruction for Assembly.Load
+            */
+
+            MethodReference assemblyLoadFunc = module.Import(
+                typeof(System.Reflection.Assembly).GetMethod(
+                    "LoadFrom",
+                    new[] {typeof(string)}));
+
+            /*
+            * Insert the call to load our ModLoader assembly
+            */
+
+            string modLoaderAssemblyPath = Path.Combine(AssemblyFolder, "ModLoader.dll");
+
+            Instruction firstInstr = method.Body.Instructions[0];
+            Instruction loadStringInstr = Instruction.Create(OpCodes.Ldstr, modLoaderAssemblyPath);
+            il.InsertBefore(firstInstr, loadStringInstr);
+
+            Instruction loadAssemblyInstr = Instruction.Create(OpCodes.Call, assemblyLoadFunc);
+            il.InsertAfter(loadStringInstr, loadAssemblyInstr);
+
+            /* 
+            * Now RainWorld.Start() should load our ModLoader.dll assembly before
+            * any other code runs! Great!
+            * 
+            * Next we need to call its initialize method and pass it a ref to the
+            * RainWorld instance's this reference.
+            */
+
+
+            // Push rainworld this reference onto eval stack so we can pass it along
+            Instruction pushRainworldRefInstr = Instruction.Create(OpCodes.Ldarg_0);
+            il.InsertAfter(loadAssemblyInstr, pushRainworldRefInstr);
+
+            MethodReference initializeFunc = module.Import(typeof(Modding.ModLoader).GetMethod("Initialize"));
+
+            Instruction callModInstr = Instruction.Create(OpCodes.Call, initializeFunc);
+            il.InsertAfter(pushRainworldRefInstr, callModInstr);
+
+            /* 
+            * That's it!
+            * 
+            * The game now loads our ModLoader, which in turn will
+            * load any number of mods found in the Mods directory.
+            */
         }
     }
 
