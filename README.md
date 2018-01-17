@@ -15,14 +15,18 @@ The existing approach to modding Rainworld is to load the game's dotnet assembly
 
 # How?
 
-An injector program which takes the vanilla game dll, injects a small mod loader routine. That mod loader can then load custom DLLs with mod-only code, and get the game to call into it. This only has to be done once to enable mod loading for an installed version of the game.
+An injector program takes the vanilla game dll and injects a small mod loader routine. This only has to be done once to enable mod loading for an installed version of the game.
 
-The ModLoader now looks for mod assemblies in the Rainworld/Mods folder. Anything called *******Mod.dll* that contains an implementation of the modding interface gets loaded. It's still work in progress.
+The mod loader will then load custom DLLs with mod-only code when the game starts up, and get the game to call into it.
 
-Harmony Patcher is currently used to inject your mod hooks into the game's code. Check out the provided example mods to see how it's done.
+The loader looks for mod assemblies in the Rainworld/Mods folder. Anything called *******Mod.dll* that contains an implementation of the modding interface gets loaded.
+
+The [Harmony](https://github.com/pardeike/Harmony/wiki) framework is currently used to inject your mod hooks into the game's code. Check out the provided example mod projects to see how it's done.
 
 Three big wins:
 
 - The game can load multiple mods at once. (providing they don't conflict, which requires some developer care)
 - You can write your code in visual studio, in C#, organize it into separate DLLs, have dependencies, use source control, and so on.
 - Mods and modding APIs don't need to redistribute copyrighted code in Assembly-CSharp, but can be locally applied as a patch to your game install with an easy to use patching program. The Hollow Knight modding community discusses this issue here: https://gist.github.com/thejoshwolfe/db369bebf6518227c830fffee12ddbec
+
+For debugging I still recommend using [dnSpy](https://github.com/0xd4d/dnSpy/wiki/Debugging-Unity-Games). If you load the game's assembly in there, and manually add your installed mod assemblies, and then launch the game through dnSpy's debug menu, its debugger works like a dream.
