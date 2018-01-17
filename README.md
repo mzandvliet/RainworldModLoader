@@ -35,9 +35,9 @@ Check out this repository. Take note of the following:
 
 Paths to important game folders are currently still hardcoded into the code and project setup. They will be different on your machine, so make sure to change the following:
 
-ModLoader.csproj -> Build/OutputPath
-MyModName.csproj -> Build/OutputPath (for any mod project in the solution)
-Inject.cs        -> public const string RootFolder, public const string AssemblyFolder
+* ModLoader.csproj -> Build/OutputPath
+* MyModName.csproj -> Build/OutputPath (for any mod project in the solution)
+* Inject.cs        -> public const string RootFolder, public const string AssemblyFolder
 
 Injector also expects you to have made a backup of Assembly-CSharp.dll in the same folder, called Assembly-CSharp-Original.dll. It will do this automatically in the future.
 
