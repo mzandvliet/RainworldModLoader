@@ -23,6 +23,8 @@ The loader looks for mod assemblies in the Rainworld/Mods folder. Anything calle
 
 The [Harmony](https://github.com/pardeike/Harmony/wiki) framework is currently used to inject your mod hooks into the game's code. Check out the provided example mod projects to see how it's done.
 
+**Important: the exact way the mods are hooked into the game's many functions is still subject to change.**
+
 Three big wins:
 
 - The game can load multiple mods at once. (providing they don't conflict, which requires some developer care)
