@@ -24,7 +24,7 @@ using UnityEngine;
 namespace CoopMod
 {
     /// <summary>
-    /// Co-op Mod, by OriginalSine
+    /// Co-op Mod, by OriginalSINe
     /// </summary>
     public static class CoopMod
     {
