@@ -29,6 +29,14 @@ Three big wins:
 - You can write your code in visual studio, in C#, organize it into separate DLLs, have dependencies, use source control, and so on.
 - Mods and modding APIs don't need to redistribute copyrighted code in Assembly-CSharp, but can be locally applied as a patch to your game install with an easy to use patching program. The Hollow Knight modding community discusses this issue here: https://gist.github.com/thejoshwolfe/db369bebf6518227c830fffee12ddbec
 
+Note: paths to important game folders are currently hardcoded into the code and project setup. They will be different on your machine, so make sure to change the following:
+
+ModLoader.csproj -> Build/OutputPath
+MyModName.csproj -> Build/OutputPath (for any mod project)
+Inject.cs        -> public const string RootFolder, public const string AssemblyFolder
+
+Injector also expects you to have made a backup of Assembly-CSharp.dll in the same folder, called Assembly-CSharp-Original.dll. It will do this automatically in the future.
+
 # Debugging
 
 For debugging I still recommend using [dnSpy](https://github.com/0xd4d/dnSpy/wiki/Debugging-Unity-Games). If you load the game's assembly in there, and manually add your installed mod assemblies, and then launch the game through dnSpy's debug menu, its debugger works like a dream.
