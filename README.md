@@ -47,7 +47,7 @@ Injector also expects you to have made a backup of Assembly-CSharp.dll in the sa
 
 You should now have a VS2017 solution that patches your game when ran, builds the mod assemblies and puts them in the game mod folder.
 
-*Note: currently this project contains multiple example mods which will eventually migrate to their own repositories. They're purely there to help quickly iterate on the mod api design. You can delete them, overwrite them, or disable them in the solution's build configuration.*
+*Note: currently this project contains multiple example mods which will eventually migrate to their own repositories. They're purely there to help quickly iterate on the mod api design. You can delete them, overwrite them, or enable/disable them in the solution's build configuration.*
 
 # Debugging
 
