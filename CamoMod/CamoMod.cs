@@ -8,28 +8,34 @@ using UnityEngine;
  */
 
 namespace CamoMod {
+    public class CamoSlugcatState {
+        public RoomCamera.SpriteLeaser _hookedLeaser;
+        public RoomCamera _hookedRoomCamera;
+        public Player _player;
+        public List<Color> _bodyColors;
+        public Color _mainColor;
+        public float _camoIntens;
+        public Color _colorDelta;
+        public float _colorDeltaSum;
+        public Color _backGroundColor;
+        public Color _currentPlayerColor;
+        public float _camoPercent;
+        public float _camoPercentBalance;
+
+        public CamoSlugcatState() {
+            _bodyColors = new List<Color>();
+            _camoIntens = 1.48f;
+            _camoPercentBalance = 8.5f;
+        }
+    }
     /// <summary>
     /// Camo Slugat Mod, by LodeRunner
     /// </summary>
     public static class CamoMod {
-        private static PlayerGraphics _graphics;
-        private static RoomCamera.SpriteLeaser _hookedLeaser;
-        private static RoomCamera _hookedRoomCamera;
-        private static Player _player;
-        private static List<Color> _bodyColors;
-        private static Color _mainColor;
-        private static float _camoIntens;
-        private static Color _colorDelta;
-        private static float _colorDeltaSum;
-        private static Color _backGroundColor;
-        private static Color _currentPlayerColor;
-        private static float _camoPercent;
-        private static float _camoPercentBalance;
+        private static Dictionary<PlayerGraphics, CamoSlugcatState> _slugcats = new Dictionary<PlayerGraphics, CamoSlugcatState>();
 
         public static void Initialize() {
-            _bodyColors = new List<Color>();
-            _camoIntens = 1.48f;
-            _camoPercentBalance = 8.5f;
+           
 
             PatchHooks();
 
@@ -60,76 +66,94 @@ namespace CamoMod {
             }
         }
 
-        private static Color CalculateBodyColor() {
-            _bodyColors.Clear();
-            for (int i = 0; i < (int)_player.bodyChunks.Length; i++)
-                _bodyColors.Add(_hookedRoomCamera.PixelColorAtCoordinate(_player.bodyChunks[i].pos));
-            for (int j = 0; j < _bodyColors.Count; j++)
-                _mainColor += _bodyColors[j];
-            _mainColor = _mainColor / (_bodyColors.Count * _camoIntens);
-            return _mainColor;
+        private static Color CalculateBodyColor(CamoSlugcatState state) {
+            state._bodyColors.Clear();
+            for (int i = 0; i < (int)state._player.bodyChunks.Length; i++)
+                state._bodyColors.Add(state._hookedRoomCamera.PixelColorAtCoordinate(state._player.bodyChunks[i].pos));
+            for (int j = 0; j < state._bodyColors.Count; j++)
+                state._mainColor += state._bodyColors[j];
+            state._mainColor = state._mainColor / (state._bodyColors.Count * state._camoIntens);
+            return state._mainColor;
         }
 
-        private static void CalculateCamoPercent() {
-            _camoPercent = 100f - _colorDeltaSum * 100f / 3f;
+        private static void CalculateCamoPercent(CamoSlugcatState state) {
+            state._camoPercent = 100f - state._colorDeltaSum * 100f / 3f;
         }
 
-        private static void CalculateColorDeltaSum() {
-            for (int i = 0; i < (int)_hookedLeaser.sprites.Length; i++)
-                _currentPlayerColor += _hookedLeaser.sprites[i].color;
-            _currentPlayerColor /= (float)((int)_hookedLeaser.sprites.Length);
-            _colorDeltaSum = Mathf.Abs(_currentPlayerColor.r - _backGroundColor.r) + Mathf.Abs(_currentPlayerColor.g - _backGroundColor.g) + Mathf.Abs(_currentPlayerColor.b - _backGroundColor.b);
+        private static void CalculateColorDeltaSum(CamoSlugcatState state) {
+            for (int i = 0; i < (int)state._hookedLeaser.sprites.Length; i++)
+                state._currentPlayerColor += state._hookedLeaser.sprites[i].color;
+            state._currentPlayerColor /= (float)((int)state._hookedLeaser.sprites.Length);
+            state._colorDeltaSum = Mathf.Abs(state._currentPlayerColor.r - state._backGroundColor.r) + Mathf.Abs(state._currentPlayerColor.g - state._backGroundColor.g) + Mathf.Abs(state._currentPlayerColor.b - state._backGroundColor.b);
         }
 
-        private static void CalculateVisibilityBonus() {
-            _player.slugcatStats.generalVisibilityBonus = 0f - _camoPercent * 10f / 100f + _camoPercentBalance;
+        private static void CalculateVisibilityBonus(CamoSlugcatState state) {
+            state._player.slugcatStats.generalVisibilityBonus = 0f - state._camoPercent * 10f / 100f + state._camoPercentBalance;
         }
 
-        private static void ChangeColor() {
-            for (int i = 0; i < (int)_hookedLeaser.sprites.Length; i++) {
+        private static void ChangeColor(CamoSlugcatState state) {
+            for (int i = 0; i < (int)state._hookedLeaser.sprites.Length; i++) {
                 if (i != 9) {
-                    _backGroundColor = CalculateBodyColor();
-                    _hookedLeaser.sprites[i].color = new Color(Mathf.Lerp(_hookedLeaser.sprites[i].color.r, _backGroundColor.r, 0.03f), Mathf.Lerp(_hookedLeaser.sprites[i].color.g, _backGroundColor.g, 0.03f), Mathf.Lerp(_hookedLeaser.sprites[i].color.b, _backGroundColor.b, 0.03f));
+                    state._backGroundColor = CalculateBodyColor(state);
+                    state._hookedLeaser.sprites[i].color = new Color(Mathf.Lerp(state._hookedLeaser.sprites[i].color.r, state._backGroundColor.r, 0.03f), Mathf.Lerp(state._hookedLeaser.sprites[i].color.g, state._backGroundColor.g, 0.03f), Mathf.Lerp(state._hookedLeaser.sprites[i].color.b, state._backGroundColor.b, 0.03f));
                 }
             }
         }
 
         #region DevTools
 
-        private static void CamoIntensController() {
-            if (Input.GetKeyDown((KeyCode)117))
-                _camoIntens += 0.1f;
-            if (Input.GetKeyDown((KeyCode)105))
-                _camoIntens -= 0.1f;
-        }
-
-        private static void CamoPercentBalance() {
-            if (Input.GetKeyDown((KeyCode)104))
-                _camoPercentBalance += 0.1f;
-            if (Input.GetKeyDown((KeyCode)106))
-                _camoPercentBalance -= 0.1f;
-        }
+//        private static void CamoIntensController() {
+//            if (Input.GetKeyDown((KeyCode)117))
+//                _camoIntens += 0.1f;
+//            if (Input.GetKeyDown((KeyCode)105))
+//                _camoIntens -= 0.1f;
+//        }
+//
+//        private static void CamoPercentBalance() {
+//            if (Input.GetKeyDown((KeyCode)104))
+//                _camoPercentBalance += 0.1f;
+//            if (Input.GetKeyDown((KeyCode)106))
+//                _camoPercentBalance -= 0.1f;
+//        }
 
         #endregion
 
         #region Hooks
 
         public static void Player_UpdatePre(Player __instance) {
-            _player = __instance;
+            PlayerGraphics g = (PlayerGraphics)__instance.graphicsModule;
+            if (g == null) {
+                Debug.LogError("Couldn't get PlayerGraphics from Player");
+                return;
+            }
+            if (!_slugcats.ContainsKey(g)) {
+                _slugcats.Add(g, new CamoSlugcatState());
+            }
+
+            _slugcats[g]._player = __instance;
+        }
+
+        public static void PlayerGraphics_DrawSpritesPost(PlayerGraphics __instance, RoomCamera.SpriteLeaser sLeaser, RoomCamera rCam, float timeStacker, Vector2 camPos) {
+            if (!_slugcats.ContainsKey(__instance)) {
+                _slugcats.Add(__instance, new CamoSlugcatState());
+            }
+            CamoSlugcatState s = _slugcats[__instance];
+
+            s._hookedLeaser = sLeaser;
+            s._hookedRoomCamera = rCam;
         }
 
         public static void PlayerGraphics_UpdatePre(PlayerGraphics __instance) {
-            _graphics = __instance;
-            ChangeColor();
-            CalculateColorDeltaSum();
-            CalculateCamoPercent();
-            CalculateVisibilityBonus();
+            if (!_slugcats.ContainsKey(__instance)) {
+                _slugcats.Add(__instance, new CamoSlugcatState());
+            }
+            CamoSlugcatState s = _slugcats[__instance];
+
+            ChangeColor(s);
+            CalculateColorDeltaSum(s);
+            CalculateCamoPercent(s);
+            CalculateVisibilityBonus(s);
         }
-        
-        public static void PlayerGraphics_DrawSpritesPost(RoomCamera.SpriteLeaser sLeaser, RoomCamera rCam, float timeStacker, Vector2 camPos) {
-            _hookedLeaser = sLeaser;
-            _hookedRoomCamera = rCam;
-        } 
 
         #endregion
     }
