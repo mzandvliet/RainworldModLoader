@@ -7,6 +7,9 @@ using Mono.Cecil.Cil;
 /* Todo:
  * - Try injecting the modloader into RainWorld.ctor (That way, Rainworld.Start is open for instrumentation/transpiling)
  * 
+ * That doesn't work. For some reason the constructor doesn't get called.
+ * Next idea: try inserting an Awake method
+ * 
  * - Get rid of hardcoded paths (perhaps use a file browser to let user find Assembly-CSharp)
  * - Make a backup before patching
  */
@@ -112,9 +115,9 @@ namespace RainWorldInject {
                 foreach (TypeDefinition type in module.Types) {
                     if (type.Name.Equals("RainWorld")) {
                         Console.WriteLine("Found RainWorld class: " + module.FullyQualifiedName);
-
                         try {
-                            InstrumentRainworldConstructor(type.Methods[0], module);
+                            AddAwakeMethod(module, type);
+                            //InstrumentRainworldConstructor(type.Methods[0], module);
                         }
                         catch (Exception e) {
                             Console.WriteLine("!! Failed on: " + type.Name + "." + type.Methods[0].Name + ": " + e.Message);
@@ -137,10 +140,27 @@ namespace RainWorldInject {
             }
         }
 
-        private static void InstrumentRainworldConstructor(MethodDefinition method, ModuleDefinition module) {
-            Console.WriteLine("Patching target method: " + method.Name);
+        private static void AddAwakeMethod(ModuleDefinition module, TypeDefinition type) {
+            MethodDefinition method = new MethodDefinition("Awake",
+                    Mono.Cecil.MethodAttributes.Private,
+                    module.TypeSystem.Void);
+            type.Methods.Add(method);
 
-            ILProcessor il = method.Body.GetILProcessor();
+            ILProcessor worker = method.Body.GetILProcessor();
+            //InsertDebugLog(module, worker, method);
+            InsertModLoaderInstructions(module, worker, method);
+            method.Body.Instructions.Add(Instruction.Create(OpCodes.Ret));
+        }
+
+        private static void InsertDebugLog(ModuleDefinition module, ILProcessor worker, MethodDefinition m) {
+            Instruction msg = worker.Create(OpCodes.Ldstr, "Initializating...\n");
+            MethodReference writeline = module.Import(typeof(UnityEngine.Debug).GetMethod("Log", new Type[] { typeof(string) }));
+            m.Body.Instructions.Add(msg);
+            m.Body.Instructions.Add(Instruction.Create(OpCodes.Call, writeline));
+        }
+
+        private static void InsertModLoaderInstructions(ModuleDefinition module, ILProcessor il, MethodDefinition method) {
+            Console.WriteLine("Patching target method: " + method.Name);
 
             /* 
             * Create the instruction for Assembly.Load
@@ -149,23 +169,22 @@ namespace RainWorldInject {
             MethodReference assemblyLoadFunc = module.Import(
                 typeof(System.Reflection.Assembly).GetMethod(
                     "LoadFrom",
-                    new[] {typeof(string)}));
+                    new[] { typeof(string) }));
 
             /*
             * Insert the call to load our ModLoader assembly
             */
 
-            string modLoaderAssemblyPath = Path.Combine(AssemblyFolder, "ModLoader.dll");
+            string modLoaderAssemblyPath = Path.Combine(AssemblyFolder, "ModLoader.dll"); // Todo: local path
 
-            Instruction firstInstr = method.Body.Instructions[0];
             Instruction loadStringInstr = Instruction.Create(OpCodes.Ldstr, modLoaderAssemblyPath);
-            il.InsertBefore(firstInstr, loadStringInstr);
+            il.Body.Instructions.Add(loadStringInstr);
 
             Instruction loadAssemblyInstr = Instruction.Create(OpCodes.Call, assemblyLoadFunc);
             il.InsertAfter(loadStringInstr, loadAssemblyInstr);
 
             /* 
-            * Now RainWorld.Start() should load our ModLoader.dll assembly before
+            * Now RainWorld should load our ModLoader.dll assembly before
             * any other code runs! Great!
             * 
             * Next we need to call its initialize method and pass it a ref to the
@@ -174,13 +193,13 @@ namespace RainWorldInject {
 
 
             // Push rainworld this reference onto eval stack so we can pass it along
-            Instruction pushRainworldRefInstr = Instruction.Create(OpCodes.Ldarg_0);
-            il.InsertAfter(loadAssemblyInstr, pushRainworldRefInstr);
-
-            MethodReference initializeFunc = module.Import(typeof(Modding.ModLoader).GetMethod("Initialize"));
-
-            Instruction callModInstr = Instruction.Create(OpCodes.Call, initializeFunc);
-            il.InsertAfter(pushRainworldRefInstr, callModInstr);
+//            Instruction pushRainworldRefInstr = Instruction.Create(OpCodes.Ldarg_0);
+//            il.InsertAfter(loadAssemblyInstr, pushRainworldRefInstr);
+//
+//            MethodReference initializeFunc = module.Import(typeof(Modding.ModLoader).GetMethod("Initialize"));
+//
+//            Instruction callModInstr = Instruction.Create(OpCodes.Call, initializeFunc);
+//            il.InsertAfter(pushRainworldRefInstr, callModInstr);
 
             /* 
             * That's it!
