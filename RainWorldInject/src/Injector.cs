@@ -5,12 +5,8 @@ using Mono.Cecil;
 using Mono.Cecil.Cil;
 
 /* Todo:
- * - Generalized mod loading routine: scan file system for mod dlls, load them in order
- * - Instrument vanilla game code with calls into mods, so that mods can specify where/when
- * to update (e.g. player jump, level load, etc.)
- * 
- * - Mechanism for targeting specific parts of game code for instrumentation, so I can hook
- * into updates for all sorts of things.
+ * - Get rid of hardcoded paths (perhaps use a file browser to let user find Assembly-CSharp)
+ * - Make a backup before patching
  */
 
 namespace RainWorldInject {
