@@ -2,6 +2,11 @@
 using Harmony;
 using UnityEngine;
 
+/* Todo:
+ * - Incompatible with Co-op mod because hooks assume 1 slugcat
+ * - Change hooks to receive a list of spawned slugcats, hook them once
+ */
+
 namespace CamoMod {
     /// <summary>
     /// Camo Slugat Mod, by LodeRunner
