@@ -2,43 +2,43 @@
 using Harmony;
 using UnityEngine;
 
-/* Todo:
- * - Incompatible with Co-op mod because hooks assume 1 slugcat
- * - Change hooks to receive a list of spawned slugcats, hook them once
+/* 
+ * Changes:
+ * - Using Harmony patcher to insert hooks
+ * - Encapsulated all slugcat camo state to make this mod compatible with coopmod, which features
+ * multiple slugcat instances.
  */
 
 namespace CamoMod {
-    public class CamoSlugcatState {
-        public RoomCamera.SpriteLeaser _hookedLeaser;
-        public RoomCamera _hookedRoomCamera;
-        public Player _player;
-        public List<Color> _bodyColors;
-        public Color _mainColor;
-        public float _camoIntens;
-        public Color _colorDelta;
-        public float _colorDeltaSum;
-        public Color _backGroundColor;
-        public Color _currentPlayerColor;
-        public float _camoPercent;
-        public float _camoPercentBalance;
+    public class SlugcatCamoState {
+        public RoomCamera.SpriteLeaser SpriteLeaser;
+        public RoomCamera RoomCamera;
+        public Player Player;
+        public List<Color> BodyColors;
+        public Color MainColor;
+        public float CamoIntens;
+        public Color ColorDelta;
+        public float ColorDeltaSum;
+        public Color BackGroundColor;
+        public Color CurrentPlayerColor;
+        public float CamoPercent;
+        public float CamoPercentBalance;
 
-        public CamoSlugcatState() {
-            _bodyColors = new List<Color>();
-            _camoIntens = 1.48f;
-            _camoPercentBalance = 8.5f;
+        public SlugcatCamoState() {
+            BodyColors = new List<Color>();
+            CamoIntens = 1.48f;
+            CamoPercentBalance = 8.5f;
         }
     }
     /// <summary>
     /// Camo Slugat Mod, by LodeRunner
     /// </summary>
     public static class CamoMod {
-        private static Dictionary<PlayerGraphics, CamoSlugcatState> _slugcats = new Dictionary<PlayerGraphics, CamoSlugcatState>();
+        private static readonly Dictionary<PlayerGraphics, SlugcatCamoState> CamoStates =
+            new Dictionary<PlayerGraphics, SlugcatCamoState>();
 
         public static void Initialize() {
-           
-
             PatchHooks();
-
             Debug.Log("CamoMod initialized");
         }
 
@@ -47,15 +47,15 @@ namespace CamoMod {
             var harmony = HarmonyInstance.Create("com.loderunner.rainworld.mod.camomod");
 
             var original = typeof(Player).GetMethod("Update");
-            var hook = typeof(CamoMod).GetMethod("Player_UpdatePre");
+            var hook = typeof(CamoMod).GetMethod("Player_Update_Pre");
             harmony.Patch(original, new HarmonyMethod(hook), null);
 
             original = typeof(PlayerGraphics).GetMethod("Update");
-            hook = typeof(CamoMod).GetMethod("PlayerGraphics_UpdatePre");
+            hook = typeof(CamoMod).GetMethod("PlayerGraphics_Update_Pre");
             harmony.Patch(original, new HarmonyMethod(hook), null);
 
             original = typeof(PlayerGraphics).GetMethod("DrawSprites");
-            hook = typeof(CamoMod).GetMethod("PlayerGraphics_DrawSpritesPost");
+            hook = typeof(CamoMod).GetMethod("PlayerGraphics_DrawSprites_Post");
             harmony.Patch(original, null, new HarmonyMethod(hook));
 
 
@@ -66,36 +66,44 @@ namespace CamoMod {
             }
         }
 
-        private static Color CalculateBodyColor(CamoSlugcatState state) {
-            state._bodyColors.Clear();
-            for (int i = 0; i < (int)state._player.bodyChunks.Length; i++)
-                state._bodyColors.Add(state._hookedRoomCamera.PixelColorAtCoordinate(state._player.bodyChunks[i].pos));
-            for (int j = 0; j < state._bodyColors.Count; j++)
-                state._mainColor += state._bodyColors[j];
-            state._mainColor = state._mainColor / (state._bodyColors.Count * state._camoIntens);
-            return state._mainColor;
+        private static Color CalculateBodyColor(SlugcatCamoState s) {
+            s.BodyColors.Clear();
+            for (int i = 0; i < (int) s.Player.bodyChunks.Length; i++) {
+                s.BodyColors.Add(s.RoomCamera.PixelColorAtCoordinate(s.Player.bodyChunks[i].pos));
+            }
+            for (int j = 0; j < s.BodyColors.Count; j++) {
+                s.MainColor += s.BodyColors[j];
+            }
+            s.MainColor = s.MainColor / (s.BodyColors.Count * s.CamoIntens);
+            return s.MainColor;
         }
 
-        private static void CalculateCamoPercent(CamoSlugcatState state) {
-            state._camoPercent = 100f - state._colorDeltaSum * 100f / 3f;
+        private static void CalculateCamoPercent(SlugcatCamoState s) {
+            s.CamoPercent = 100f - s.ColorDeltaSum * 100f / 3f;
         }
 
-        private static void CalculateColorDeltaSum(CamoSlugcatState state) {
-            for (int i = 0; i < (int)state._hookedLeaser.sprites.Length; i++)
-                state._currentPlayerColor += state._hookedLeaser.sprites[i].color;
-            state._currentPlayerColor /= (float)((int)state._hookedLeaser.sprites.Length);
-            state._colorDeltaSum = Mathf.Abs(state._currentPlayerColor.r - state._backGroundColor.r) + Mathf.Abs(state._currentPlayerColor.g - state._backGroundColor.g) + Mathf.Abs(state._currentPlayerColor.b - state._backGroundColor.b);
+        private static void CalculateColorDeltaSum(SlugcatCamoState s) {
+            for (int i = 0; i < s.SpriteLeaser.sprites.Length; i++)
+                s.CurrentPlayerColor += s.SpriteLeaser.sprites[i].color;
+            s.CurrentPlayerColor /= s.SpriteLeaser.sprites.Length;
+            s.ColorDeltaSum = 
+                Mathf.Abs(s.CurrentPlayerColor.r - s.BackGroundColor.r) +
+                Mathf.Abs(s.CurrentPlayerColor.g - s.BackGroundColor.g) +
+                Mathf.Abs(s.CurrentPlayerColor.b - s.BackGroundColor.b);
         }
 
-        private static void CalculateVisibilityBonus(CamoSlugcatState state) {
-            state._player.slugcatStats.generalVisibilityBonus = 0f - state._camoPercent * 10f / 100f + state._camoPercentBalance;
+        private static void CalculateVisibilityBonus(SlugcatCamoState s) {
+            s.Player.slugcatStats.generalVisibilityBonus = 0f - s.CamoPercent * 10f / 100f + s.CamoPercentBalance;
         }
 
-        private static void ChangeColor(CamoSlugcatState state) {
-            for (int i = 0; i < (int)state._hookedLeaser.sprites.Length; i++) {
+        private static void ChangeColor(SlugcatCamoState state) {
+            for (int i = 0; i < state.SpriteLeaser.sprites.Length; i++) {
                 if (i != 9) {
-                    state._backGroundColor = CalculateBodyColor(state);
-                    state._hookedLeaser.sprites[i].color = new Color(Mathf.Lerp(state._hookedLeaser.sprites[i].color.r, state._backGroundColor.r, 0.03f), Mathf.Lerp(state._hookedLeaser.sprites[i].color.g, state._backGroundColor.g, 0.03f), Mathf.Lerp(state._hookedLeaser.sprites[i].color.b, state._backGroundColor.b, 0.03f));
+                    state.BackGroundColor = CalculateBodyColor(state);
+                    state.SpriteLeaser.sprites[i].color = new Color(
+                        Mathf.Lerp(state.SpriteLeaser.sprites[i].color.r, state.BackGroundColor.r, 0.03f),
+                        Mathf.Lerp(state.SpriteLeaser.sprites[i].color.g, state.BackGroundColor.g, 0.03f),
+                        Mathf.Lerp(state.SpriteLeaser.sprites[i].color.b, state.BackGroundColor.b, 0.03f));
                 }
             }
         }
@@ -120,39 +128,36 @@ namespace CamoMod {
 
         #region Hooks
 
-        public static void Player_UpdatePre(Player __instance) {
+        public static void Player_Update_Pre(Player __instance) {
             PlayerGraphics g = (PlayerGraphics)__instance.graphicsModule;
-            if (g == null) {
-                Debug.LogError("Couldn't get PlayerGraphics from Player");
-                return;
-            }
-            if (!_slugcats.ContainsKey(g)) {
-                _slugcats.Add(g, new CamoSlugcatState());
-            }
+            SlugcatCamoState s = GetOrCreateCamoState(g);
 
-            _slugcats[g]._player = __instance;
+            s.Player = __instance;
         }
 
-        public static void PlayerGraphics_DrawSpritesPost(PlayerGraphics __instance, RoomCamera.SpriteLeaser sLeaser, RoomCamera rCam, float timeStacker, Vector2 camPos) {
-            if (!_slugcats.ContainsKey(__instance)) {
-                _slugcats.Add(__instance, new CamoSlugcatState());
-            }
-            CamoSlugcatState s = _slugcats[__instance];
+        public static void PlayerGraphics_DrawSprites_Post(PlayerGraphics __instance,
+            RoomCamera.SpriteLeaser sLeaser, RoomCamera rCam, float timeStacker, Vector2 camPos) {
 
-            s._hookedLeaser = sLeaser;
-            s._hookedRoomCamera = rCam;
+            SlugcatCamoState s = GetOrCreateCamoState(__instance);
+
+            s.SpriteLeaser = sLeaser;
+            s.RoomCamera = rCam;
         }
 
-        public static void PlayerGraphics_UpdatePre(PlayerGraphics __instance) {
-            if (!_slugcats.ContainsKey(__instance)) {
-                _slugcats.Add(__instance, new CamoSlugcatState());
-            }
-            CamoSlugcatState s = _slugcats[__instance];
+        public static void PlayerGraphics_Update_Pre(PlayerGraphics __instance) {
+            SlugcatCamoState s = GetOrCreateCamoState(__instance);
 
             ChangeColor(s);
             CalculateColorDeltaSum(s);
             CalculateCamoPercent(s);
             CalculateVisibilityBonus(s);
+        }
+
+        private static SlugcatCamoState GetOrCreateCamoState(PlayerGraphics g) {
+            if (!CamoStates.ContainsKey(g)) {
+                CamoStates.Add(g, new SlugcatCamoState());
+            }
+            return CamoStates[g];
         }
 
         #endregion

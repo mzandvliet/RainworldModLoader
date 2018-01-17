@@ -3,7 +3,7 @@ using Harmony;
 using UnityEngine;
 
 /* Todo:
- * - Provide an in-game (or config file) way of specifying type, like the below code
+ * - Provide an in-game (or config file) way of specifying slugcat type, like the below code
  * 
  * - Implement a mechanic that improves the play experience for off-screen slugcats. Multiple options:
  *      1. Use a New Super Mario Bros style teleport, bringing the off-screen player to the same position as the on-screen player
@@ -36,7 +36,7 @@ namespace CoopMod
             var harmony = HarmonyInstance.Create("com.originalsine.rainworld.mod.coopmod");
 
             var original = typeof(RainWorldGame).GetConstructor(new Type[] {typeof(ProcessManager)});
-            var hook = typeof(CoopMod).GetMethod("RainWorldGame_CtorPre");
+            var hook = typeof(CoopMod).GetMethod("RainWorldGame_Ctor_Pre");
             harmony.Patch(original, new HarmonyMethod(hook), null);
 
             Debug.Log("Patched methods: ");
@@ -46,7 +46,7 @@ namespace CoopMod
             }
         }
 
-        public static void RainWorldGame_CtorPre(RainWorldGame __instance, ProcessManager manager) {
+        public static void RainWorldGame_Ctor_Pre(RainWorldGame __instance, ProcessManager manager) {
             // note: using manager.rainWorld because __instance.rainWorld is still null at this point
             manager.rainWorld.setup.player2 = true;
         }
