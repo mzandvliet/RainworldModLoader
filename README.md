@@ -53,4 +53,4 @@ For debugging I still recommend using [dnSpy](https://github.com/0xd4d/dnSpy/wik
 
 I've tried getting VS2017's debugging tools to work with the game, but haven't managed it yet. And besides, dnSpy's decompiled code is nicer to read.
 
-The mod loader also enabled logging to consoleLog.txt and exceptionLog.txt
+The mod loader also automatically enables logging to consoleLog.txt and exceptionLog.txt, so all your Debug.Log, Debug.LogWarning and Debug.LogError calls ends up there.
