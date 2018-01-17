@@ -1,3 +1,6 @@
+![](https://imgur.com/a/4qdpB.gif)
+(Slugcat Camo Mod by LodeRunner + Co-op Mod by OriginalSINe)
+
 # RainworldModLoader
 Proof of concept Rainworld Mod Loader (meaning not usable, but with extra work it could be)
 
