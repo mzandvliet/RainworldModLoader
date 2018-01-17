@@ -20,10 +20,16 @@
 namespace RainWorldInject {
     class Program {
         static void Main(string[] args) {
-            Injector.Inject();
+            bool success = Injector.Inject();
 
             Console.WriteLine();
-            Console.WriteLine("All done!");
+            if (success) {
+                Console.WriteLine("All done, enjoy!");
+            }
+            else {
+                Console.WriteLine("Something went wrong, quitting...");
+            }
+            
             Console.WriteLine("Press any key to exit...");
             Console.ReadLine();
         }

@@ -22,7 +22,7 @@ namespace RainWorldInject {
         public const string RootFolder = "D:\\Games\\SteamLibrary\\steamapps\\common\\Rain World";
         public const string AssemblyFolder = "D:\\Games\\SteamLibrary\\steamapps\\common\\Rain World\\RainWorld_Data\\Managed";
 
-        public static void Inject() {
+        public static bool Inject() {
             Console.WriteLine("Injector running...");
 
             string unpatchedAssemblyPath = Path.Combine(AssemblyFolder, "Assembly-CSharp-Original.dll");
@@ -77,15 +77,25 @@ namespace RainWorldInject {
             catch (Exception e) {
                 // Skip writing if any exception occurred
                 Console.WriteLine("!! Exception while processing assembly: " + assembly.FullName + ", " + e.Message);
-                return;
+                return false;
             }
 
             // Write the patched assembly to the game directory
             if (File.Exists(patchedAssemblyPath)) {
-                File.Delete(patchedAssemblyPath);
+                try {
+                    File.Delete(patchedAssemblyPath);
+                }
+                catch (Exception e) {
+                    Console.WriteLine("!! Can't overwrite Assembly-CSharp.dll because it is in use (is the game running?)");
+                    return false;
+                }
+                
             }
+
             Console.WriteLine("Writing to " + patchedAssemblyPath + "...");
             assembly.Write(patchedAssemblyPath, writerParameters);
+
+            return true;
         }
 
         private static void ProcessAssembly(AssemblyDefinition assembly) {
@@ -103,23 +113,32 @@ namespace RainWorldInject {
                     if (type.Name.Equals("RainWorld")) {
                         Console.WriteLine("Found RainWorld class: " + module.FullyQualifiedName);
 
-                        foreach (MethodDefinition method in type.Methods) {
-                            try {
-                                if (method.Name == "Start") {
-                                    InstrumentRainworldStartMethod(method, module);
-                                }
-                            }
-                            catch (Exception e) {
-                                Console.WriteLine("!! Failed on: " + type.Name + "." + method.Name + ": " + e.Message);
-                            }
+                        try {
+                            InstrumentRainworldConstructor(type.Methods[0], module);
                         }
+                        catch (Exception e) {
+                            Console.WriteLine("!! Failed on: " + type.Name + "." + type.Methods[0].Name + ": " + e.Message);
+                        }
+
+                        //                        foreach (MethodDefinition method in type.Methods) {
+                        //                            Console.WriteLine("Found RainWorld class: " + module.FullyQualifiedName);
+                        //
+                        //                            try {
+                        //                                if (method.Name == "Start") {
+                        //                                    InstrumentRainworldStartMethod(method, module);
+                        //                                }
+                        //                            }
+                        //                            catch (Exception e) {
+                        //                                Console.WriteLine("!! Failed on: " + type.Name + "." + method.Name + ": " + e.Message);
+                        //                            }
+                        //                        }
                     }
                 }
             }
         }
 
-        private static void InstrumentRainworldStartMethod(MethodDefinition method, ModuleDefinition module) {
-            Console.WriteLine("Found method: " + method.Name);
+        private static void InstrumentRainworldConstructor(MethodDefinition method, ModuleDefinition module) {
+            Console.WriteLine("Patching target method: " + method.Name);
 
             ILProcessor il = method.Body.GetILProcessor();
 
