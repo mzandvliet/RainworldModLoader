@@ -5,6 +5,8 @@ using Mono.Cecil;
 using Mono.Cecil.Cil;
 
 /* Todo:
+ * - Try injecting the modloader into RainWorld.ctor (That way, Rainworld.Start is open for instrumentation/transpiling)
+ * 
  * - Get rid of hardcoded paths (perhaps use a file browser to let user find Assembly-CSharp)
  * - Make a backup before patching
  */

@@ -48,7 +48,7 @@ namespace ReplayGhostMod {
             return $"Replay_{now.Day}-{now.Month}-{now.Year}-{now.Hour}-{now.Minute}-{now.Ticks}.txt";
         }
 
-        // Todo: Make sure this gets called, and that the writer closes before any new recording starts
+        // Todo: Make sure this gets called, I'd hate to leave file writers open accidentally
         public static void RainWorldGame_ExitGame_Pre(RainWorldGame __instance, ProcessManager manager) {
             _player = __instance.session.Players[0];
 

@@ -13,6 +13,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CoopMod", "CoopMod\CoopMod.
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReplayGhostMod", "ReplayGhostMod\ReplayGhostMod.csproj", "{F244C2DE-B822-4A06-9AAE-9AE93F72B48E}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DevToolsMod", "DevTools\DevToolsMod.csproj", "{2F8403C7-8FB6-4F71-894C-A4DEC432F4F7}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -34,9 +36,12 @@ Global
 		{EAA49728-FBEB-4FA0-BD99-4BBDB3B238FA}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{EAA49728-FBEB-4FA0-BD99-4BBDB3B238FA}.Release|Any CPU.Build.0 = Release|Any CPU
 		{F244C2DE-B822-4A06-9AAE-9AE93F72B48E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{F244C2DE-B822-4A06-9AAE-9AE93F72B48E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F244C2DE-B822-4A06-9AAE-9AE93F72B48E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F244C2DE-B822-4A06-9AAE-9AE93F72B48E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2F8403C7-8FB6-4F71-894C-A4DEC432F4F7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2F8403C7-8FB6-4F71-894C-A4DEC432F4F7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2F8403C7-8FB6-4F71-894C-A4DEC432F4F7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2F8403C7-8FB6-4F71-894C-A4DEC432F4F7}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using UnityEngine;
@@ -11,11 +12,11 @@ using UnityEngine;
 
 namespace Modding {
     public static class ModLoader {
-//        private static readonly List<IMod> _loadedMods = new List<IMod>();
+        private static readonly List<Assembly> _loadedMods = new List<Assembly>();
 
         public static void Initialize(RainWorld rainworld) {
             ModLogger.EnableLogging();
-            Debug.Log("Yay, we're in the mod loader! Rainworld version: " + rainworld.gameVersion);
+            Debug.Log("---- Rain World Mod Loader Initializing... -----\n");
             
             // Iterate over mods, load them in order
 
@@ -32,10 +33,12 @@ namespace Modding {
                 }
             }
 
-//            Debug.Log("Loaded mods: ");
-//            for (int i = 0; i < _loadedMods.Count; i++) {
-//                Debug.Log("" + i + ": " + _loadedMods[i]);
-//            }
+            Debug.Log("\nLoaded mods:");
+            for (int i = 0; i < _loadedMods.Count; i++) {
+                Debug.Log("" + i + ": " + _loadedMods[i].FullName);
+            }
+
+            Debug.Log("\n---- Rain World Mod Loader Done! -----\n");
         }
 
         private static string GetGameRootPath() {
@@ -49,7 +52,7 @@ namespace Modding {
         private static Assembly LoadModAssemblyFromDirectory(string path) {
             var files = Directory.GetFiles(path);
             for (int i = 0; i < files.Length; i++) {
-                if (files[i].Contains("Mod.dll")) {
+                if (files[i].EndsWith("Mod.dll")) {
                     Debug.Log("Found Mod Assembly: " + files[i]);
                     var assembly = Assembly.LoadFrom(files[i]);
                     return assembly;
@@ -63,7 +66,7 @@ namespace Modding {
             foreach (Module module in assembly.GetModules()) {
                 foreach (Type type in module.GetTypes()) {
                     if (type.Name.EndsWith("Mod")) { // Todo: lol, make more rigorous
-                        Console.WriteLine("Found Mod Entrypoint! " + type.FullName);
+                        Console.WriteLine("Found Mod! " + type.FullName);
 
                         try {
                             var initMethod = type.GetMethod("Initialize");
@@ -72,6 +75,9 @@ namespace Modding {
                                 return;
                             }
                             initMethod.Invoke(null, null);
+                            _loadedMods.Add(assembly);
+
+                            Debug.Log("Succesfully initialized mod: " + type.FullName);
                         }
                         catch (Exception e) {
                             Debug.LogError($"Something went wrong loading {type.FullName}, {e.Message}");
