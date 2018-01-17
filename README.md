@@ -5,13 +5,13 @@
 # RainworldModLoader
 Proof of concept Rainworld Mod Loader, almost at a state of being very useful.
 
-If you are a mod developer, please do get in touch and provide feedback! I'm on the Rainworld Discord in #modding, https://discordapp.com/invite/SBmHbpW
+If you are a mod developer, please do get in touch and provide feedback! I'm on the [Rainworld Discord](https://discordapp.com/invite/SBmHbpW) in #modding.
 
 (This same approach could be used to create mod loaders for any Unity game, really.)
 
 # Why?
 
-The existing approach to modding Rainworld is to load the game's dotnet assembly using a tool called dnSpy, which lets you see decompiled source. You then have to edit the low level IL assembly code to do anything, deal with all sorts of cryptic errors, and after that your code is stuffed into the game DLL. This workflow is not great for writing and maintaining comprehensive modifications.
+The existing approach to modding Rainworld is to load the game's dotnet assembly using a tool called [dnSpy](https://github.com/0xd4d/dnSpy/), which lets you see decompiled source. You then have to edit the low level IL assembly code to do anything, deal with all sorts of cryptic errors, and after that your code is stuffed into the game DLL. This workflow is not great for writing and maintaining comprehensive modifications.
 
 # How Does It Work?
 
@@ -29,7 +29,7 @@ Three big wins:
 
 - The game can load multiple mods at once. (Providing they don't conflict, which requires some developer care. The modding API can't guarantee that any two mods go well together, but their developers can.)
 - You can write your code in visual studio, in C#, organize it into separate DLLs, have dependencies, use source control, and so on.
-- Mods and modding APIs don't need to redistribute copyrighted code in Assembly-CSharp, but can be locally applied as a patch to your game install with an easy to use patching program. The Hollow Knight modding community discusses this issue here: https://gist.github.com/thejoshwolfe/db369bebf6518227c830fffee12ddbec
+- Mods and modding APIs don't need to redistribute copyrighted code in Assembly-CSharp, but can be locally applied as a patch to your game install with an easy to use patching program. The Hollow Knight modding community has [encountered an discussed this issue](https://gist.github.com/thejoshwolfe/db369bebf6518227c830fffee12ddbec), leading to a similar approach.
 
 # Developing Mods
 
