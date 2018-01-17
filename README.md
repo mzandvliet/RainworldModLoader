@@ -1,6 +1,6 @@
-(Slugcat Camo Mod by LodeRunner + Co-op Mod by OriginalSINe)
-
 ![](https://i.imgur.com/KSE4URu.gif)
+
+(Example: Slugcat Camo Mod by LodeRunner + Co-op Mod by OriginalSINe, both running through this mod loader)
 
 # RainworldModLoader
 Proof of concept Rainworld Mod Loader, almost at a state of being very useful.
