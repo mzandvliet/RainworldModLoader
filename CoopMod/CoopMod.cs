@@ -4,16 +4,21 @@ using UnityEngine;
 
 /* Todo:
  * - Provide an in-game (or config file) way of specifying type, like the below code
+ * 
+ * - Implement a mechanic that improves the play experience for off-screen slugcats. Multiple options:
+ *      1. Use a New Super Mario Bros style teleport, bringing the off-screen player to the same position as the on-screen player
+ *      2. Use a picture-in-picture or split screen view to show off-screen slugcat what's happening
+ *      Both options have very interesting ramifications.
  */
 
 // In RainWorldGame constructor, inside the condition "if (this.setupValues.player2)":
 // If you want Player 2 to be Survivor
 //    state = new PlayerState(abstractCreature5, 1, 0, false)
-    // If you want Player 2 to be Monk
+// If you want Player 2 to be Monk
 //    state = new PlayerState(abstractCreature5, 1, 1, false)
-    // If you want Player 2 to be Hunter
+// If you want Player 2 to be Hunter
 //    state = new PlayerState(abstractCreature5, 1, 2, false)
-    // If you want Player 2 to be Shadow
+// If you want Player 2 to be Shadow
 //    state = new PlayerState(abstractCreature5, 1, 3, false)
 
 namespace CoopMod

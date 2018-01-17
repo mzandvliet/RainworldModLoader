@@ -1,12 +1,12 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Reflection;
 using UnityEngine;
 
 /* 
- * First we should by default create a logger for mod stuff
+ * Todo:
+ * 
+ * Implement a window in the main menu that shows which mods are loaded
  */
 
 namespace Modding {
