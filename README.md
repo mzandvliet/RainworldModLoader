@@ -3,7 +3,7 @@
 ![](https://i.imgur.com/KSE4URu.gif)
 
 # RainworldModLoader
-Proof of concept Rainworld Mod Loader (meaning not usable, but with extra work it could be)
+Proof of concept Rainworld Mod Loader, almost at a state of being very useful.
 
 If you are a mod developer, please do get in touch and provide feedback! I'm on the Rainworld Discord in #modding, https://discordapp.com/invite/SBmHbpW
 
