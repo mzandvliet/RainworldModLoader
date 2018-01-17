@@ -33,7 +33,7 @@ namespace CamoMod {
 
         // Todo: streamline this a little
         private static void PatchHooks() {
-            var harmony = HarmonyInstance.Create("com.ramjet.rainworld.mod.camomod");
+            var harmony = HarmonyInstance.Create("com.loderunner.rainworld.mod.camomod");
 
             var original = typeof(Player).GetMethod("Update");
             var hook = typeof(CamoMod).GetMethod("Player_UpdatePre");
