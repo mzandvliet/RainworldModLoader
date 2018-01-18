@@ -24,10 +24,10 @@ namespace RainWorldInject {
 
             Console.WriteLine();
             if (success) {
-                Console.WriteLine("All done, enjoy!");
+                Console.WriteLine("All done, enjoy!\n");
             }
             else {
-                Console.WriteLine("Something went wrong, quitting...");
+                Console.WriteLine("Something went wrong, quitting...\n");
             }
             
             Console.WriteLine("Press any key to exit...");

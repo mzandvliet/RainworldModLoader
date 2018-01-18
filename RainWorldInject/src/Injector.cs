@@ -7,7 +7,6 @@ using Mono.Cecil.Cil;
 /* Todo:
  * 
  * - Get rid of hardcoded paths (perhaps use a file browser to let user find Assembly-CSharp, or a config file)
- * - Automatically make a backup before patching
  * - Ship injector with 0Harmony.dll, optionally include and install patched mono.dll
  * 
  * - Try injecting the modloader into RainWorld.ctor (That way, Rainworld.Start is open for instrumentation/transpiling)
@@ -21,80 +20,84 @@ namespace RainWorldInject {
     /// 
     /// Created by Martijn Zandvliet, 10/01/2017
     public static class Injector {
-        public const string AssemblyFolder = "D:\\Games\\SteamLibrary\\steamapps\\common\\Rain World\\RainWorld_Data\\Managed";
+        public const string AssemblyFolder = "RainWorld_Data\\Managed";
 
         public static bool Inject() {
-            Console.WriteLine("Injector running...");
+            Console.WriteLine("Rain World Mod Loader: Code Injection...\n");
 
-            string unpatchedAssemblyPath = Path.Combine(AssemblyFolder, "Assembly-CSharp-Original.dll");
-            string patchedAssemblyPath = Path.Combine(AssemblyFolder, "Assembly-CSharp.dll");
+            string assemblyPath = Path.Combine(AssemblyFolder, "Assembly-CSharp.dll");
+            string assemblyBackupPath = Path.Combine(AssemblyFolder, "Assembly-CSharp-Backup.dll");
 
-            // Create resolver
-            DefaultAssemblyResolver assemblyResolver = new DefaultAssemblyResolver();
-            assemblyResolver.AddSearchDirectory(AssemblyFolder);
+            // First, back up the original file before we do anything to it
 
-            // Create reader parameters with resolver
-            ReaderParameters readerParameters = new ReaderParameters();
-            readerParameters.AssemblyResolver = assemblyResolver;
-
-            // Create writer parameters
-            WriterParameters writerParameters = new WriterParameters();
-
-            // Process the game assembly
-
-            // mdbs have the naming convention myDll.dll.mdb whereas pdbs have myDll.pdb
-            String mdbPath = unpatchedAssemblyPath + ".mdb";
-            String pdbPath = unpatchedAssemblyPath.Substring(0, unpatchedAssemblyPath.Length - 3) + "pdb";
-
-            // Figure out if there's an pdb/mdb to go with it
-            if (File.Exists(pdbPath)) {
-                readerParameters.ReadSymbols = true;
-                readerParameters.SymbolReaderProvider = new Mono.Cecil.Pdb.PdbReaderProvider();
-                writerParameters.WriteSymbols = true;
-                writerParameters.SymbolWriterProvider = new Mono.Cecil.Mdb.MdbWriterProvider(); // pdb written out as mdb, as mono can't work with pdbs
+            if (!File.Exists(assemblyPath)) {
+                Console.WriteLine("!! Can't locate the file Assembly-CSharp.dll !!");
+                return false;
             }
-            else if (File.Exists(mdbPath)) {
-                readerParameters.ReadSymbols = true;
-                readerParameters.SymbolReaderProvider = new Mono.Cecil.Mdb.MdbReaderProvider();
-                writerParameters.WriteSymbols = true;
-                writerParameters.SymbolWriterProvider = new Mono.Cecil.Mdb.MdbWriterProvider();
+
+            if (Backup(assemblyPath, assemblyBackupPath)) {
+                Console.WriteLine("Backed up original game file as Assembly-CSharp-Backup.dll\n");
             }
             else {
-                readerParameters.ReadSymbols = false;
-                readerParameters.SymbolReaderProvider = null;
-                writerParameters.WriteSymbols = false;
-                writerParameters.SymbolWriterProvider = null;
+                return false;
             }
 
             // Read assembly
-            AssemblyDefinition assembly = AssemblyDefinition.ReadAssembly(unpatchedAssemblyPath, readerParameters);
 
-            // Process it if it hasn't already
-            Console.WriteLine("Processing " + Path.GetFileName(unpatchedAssemblyPath) + "...");
+            AssemblyDefinition assembly = AssemblyDefinition.ReadAssembly(assemblyBackupPath);
 
             try {
+                Console.WriteLine("Processing " + Path.GetFileName(assemblyBackupPath) + "...");
                 ProcessAssembly(assembly);
             }
             catch (Exception e) {
-                // Skip writing if any exception occurred
-                Console.WriteLine("!! Exception while processing assembly: " + assembly.FullName + ", " + e.Message);
+                Console.WriteLine(
+                    "!! Exception while processing assembly: " + assembly.Name +
+                    ", Reason: " + e.Message);
                 return false;
             }
 
             // Write the patched assembly to the game directory
-            if (File.Exists(patchedAssemblyPath)) {
+
+            if (File.Exists(assemblyPath)) {
                 try {
-                    File.Delete(patchedAssemblyPath);
+                    File.Delete(assemblyPath);
                 }
                 catch (Exception e) {
-                    Console.WriteLine("!! Can't overwrite Assembly-CSharp.dll because it is in use (is the game running?)");
+                    Console.WriteLine(
+                        "!! Can't overwrite Assembly-CSharp.dll because it is in use (is the" +
+                        " game running?) Reason: " + e.Message);
                     return false;
                 }
                 
             }
 
-            Console.WriteLine("Writing to " + patchedAssemblyPath + "...");
-            assembly.Write(patchedAssemblyPath, writerParameters);
+            Console.WriteLine("Writing to " + assemblyPath + "...");
+            assembly.Write(assemblyPath);
+
+            return true;
+        }
+
+        private static bool Backup(string assemblyPath, string backupPath) {
+            // Todo: first verify that assembly is original, with md5 hash
+
+            // Handle old filenames, if present
+            string assemblyOriginalPath = Path.Combine(AssemblyFolder, "Assembly-CSharp-Original.dll");
+            if (File.Exists(assemblyOriginalPath) && !File.Exists(backupPath)) {
+                Console.WriteLine("Detected old ModLoader setup, updating filenames...");
+                File.Move(assemblyOriginalPath, backupPath);
+            }
+
+            // Backup vanilla assembly
+            if (!File.Exists(backupPath)) {
+                try {
+                    File.Copy(assemblyPath, backupPath);
+                }
+                catch (Exception e) {
+                    Console.WriteLine("!! Couldn't back up original game files !!");
+                    return false;
+                }
+            }
 
             return true;
         }
@@ -104,10 +107,12 @@ namespace RainWorldInject {
                 Console.WriteLine("Module: " + module.FullyQualifiedName);
 
                 /*
-                 * Here we go hunting for classes, methods, and other bits of IL that we want to inject into
+                 * Here we go hunting for classes, methods, and other bits of IL that
+                 * we want to inject into
                  * 
-                 * In this case we want to inject code that loads our MyMod assembly as soon as
-                 * the game runs RainWorld.Start(), and then calls a method from that mod.
+                 * In this case we want to inject code that loads our MyMod assembly
+                 * as soon as the game runs RainWorld.Start(), and then calls a method
+                 * from that mod.
                  */
 
                 foreach (TypeDefinition type in module.Types) {
@@ -121,7 +126,9 @@ namespace RainWorldInject {
                                 }
                             }
                             catch (Exception e) {
-                                Console.WriteLine("!! Failed on: " + type.Name + "." + method.Name + ": " + e.Message);
+                                Console.WriteLine(
+                                    "!! Failed on: " + type.Name + "."
+                                    + method.Name + ": " + e.Message);
                             }
                         }
                     }
