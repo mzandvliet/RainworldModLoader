@@ -172,7 +172,7 @@ namespace RainWorldInject {
                     module.TypeSystem.Void);
             ILProcessor il = method.Body.GetILProcessor();
             InsertDebugLog(module, il, method);
-            //InsertModLoaderInstructions(module, il, method);
+            InsertModLoaderInstructions(module, il, method);
             il.Append(Instruction.Create(OpCodes.Ret));
             myType.Methods.Add(method);
 
@@ -189,11 +189,8 @@ namespace RainWorldInject {
             Instruction callGetGameObject = Instruction.Create(OpCodes.Call, getGameObject);
             il.Append(callGetGameObject);
 
-            //il.Append(Instruction.Create(OpCodes.Ldstr, "MyLoader"));
-
             var addComponentMethod = typeof(GameObject).GetMethod("AddComponent", new Type[] {}).MakeGenericMethod(new[] {loaderType});
-            MethodReference addComponent = module.Import(addComponentMethod); // , new[] { typeof(string) }
-            
+            MethodReference addComponent = module.Import(addComponentMethod);
             il.Append(Instruction.Create(OpCodes.Callvirt, addComponent));
             il.Append(Instruction.Create(OpCodes.Pop));
         }
