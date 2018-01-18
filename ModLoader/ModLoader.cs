@@ -14,7 +14,7 @@ namespace Modding {
     public static class ModLoader {
         private static readonly List<Assembly> _loadedMods = new List<Assembly>();
 
-        public static void Initialize(RainWorld rainworld) {
+        public static void Initialize() { // Rainworld ref
             ModLogger.EnableLogging();
             Debug.Log("---- Rain World Mod Loader Initializing... -----\n");
             

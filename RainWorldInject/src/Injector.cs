@@ -114,14 +114,14 @@ namespace RainWorldInject {
                  * the game runs RainWorld.Start(), and then calls a method from that mod.
                  */
 
-                InsertMonoBehaviour(module);
+                var loaderType = InsertLoaderBehaviourType(module);
 
                 for (var i = 0; i < module.Types.Count; i++) {
                     TypeDefinition type = module.Types[i];
                     if (type.Name.Equals("RainWorld")) {
                         Console.WriteLine("Found RainWorld class: " + module.FullyQualifiedName);
                         try {
-                            AddAwakeMethod(module, type);
+                            AddAwakeMethod(module, type, loaderType);
                         }
                         catch (Exception e) {
                             Console.WriteLine("!! Injection failed: " + e.Message);
@@ -132,14 +132,14 @@ namespace RainWorldInject {
             }
         }
 
-        private static void AddAwakeMethod(ModuleDefinition module, TypeDefinition type) {
+        private static void AddAwakeMethod(ModuleDefinition module, TypeDefinition type, Type loaderType) {
             MethodDefinition method = new MethodDefinition("Awake",
                     Mono.Cecil.MethodAttributes.Private | Mono.Cecil.MethodAttributes.HideBySig,
                     module.TypeSystem.Void);
 
             ILProcessor il = method.Body.GetILProcessor();
             //InsertDebugLog(module, il, method);
-            InsertAddComponent(module, il, method);
+            InsertAddComponent(module, il, method, loaderType);
             //InsertDestroyCall(module, il, method);
             il.Append(Instruction.Create(OpCodes.Ret));
 
@@ -161,25 +161,27 @@ namespace RainWorldInject {
             il.Append(Instruction.Create(OpCodes.Call, destroyMethodRef));
         }
 
-        private static void InsertMonoBehaviour(ModuleDefinition module) {
-            TypeDefinition myType = new TypeDefinition("Modding", "MyLoader", TypeAttributes.Public | TypeAttributes.Class);
+        private static Type InsertLoaderBehaviourType(ModuleDefinition module) {
+            string nspace = typeof(RainWorld).Namespace;
+            TypeDefinition myType = new TypeDefinition(nspace, "MyLoader", TypeAttributes.Public | TypeAttributes.Class);
             var monoBehaviour = module.Import(typeof(MonoBehaviour));
             myType.BaseType = monoBehaviour;
 
             MethodDefinition method = new MethodDefinition("Start",
                     Mono.Cecil.MethodAttributes.Private | Mono.Cecil.MethodAttributes.HideBySig,
                     module.TypeSystem.Void);
-
             ILProcessor il = method.Body.GetILProcessor();
             InsertDebugLog(module, il, method);
+            //InsertModLoaderInstructions(module, il, method);
             il.Append(Instruction.Create(OpCodes.Ret));
-
             myType.Methods.Add(method);
 
             module.Types.Add(myType);
+
+            return Type.GetType(myType.FullName + ", " + module.Assembly.FullName);
         }
 
-        private static void InsertAddComponent(ModuleDefinition module, ILProcessor il, MethodDefinition m) {
+        private static void InsertAddComponent(ModuleDefinition module, ILProcessor il, MethodDefinition m, Type loaderType) {
             Instruction ldThis = Instruction.Create(OpCodes.Ldarg_0);
             il.Append(ldThis);
 
@@ -187,17 +189,16 @@ namespace RainWorldInject {
             Instruction callGetGameObject = Instruction.Create(OpCodes.Call, getGameObject);
             il.Append(callGetGameObject);
 
-            il.Append(Instruction.Create(OpCodes.Ldstr, "MyLoader"));
+            //il.Append(Instruction.Create(OpCodes.Ldstr, "MyLoader"));
 
-            MethodReference addComponent = module.Import(typeof(UnityEngine.GameObject).GetMethod("AddComponent", new[] { typeof(string) }));
-
+            var addComponentMethod = typeof(GameObject).GetMethod("AddComponent", new Type[] {}).MakeGenericMethod(new[] {loaderType});
+            MethodReference addComponent = module.Import(addComponentMethod); // , new[] { typeof(string) }
+            
             il.Append(Instruction.Create(OpCodes.Callvirt, addComponent));
             il.Append(Instruction.Create(OpCodes.Pop));
         }
 
         private static void InsertModLoaderInstructions(ModuleDefinition module, ILProcessor il, MethodDefinition method) {
-            Console.WriteLine("Patching target method: " + method.Name);
-
             /* 
             * Create the instruction for Assembly.Load
             */
@@ -229,13 +230,13 @@ namespace RainWorldInject {
 
 
             // Push rainworld this reference onto eval stack so we can pass it along
-            //            Instruction pushRainworldRefInstr = Instruction.Create(OpCodes.Ldarg_0);
-            //            il.Append(loadAssemblyInstr, pushRainworldRefInstr);
-            //
-            //            MethodReference initializeFunc = module.Import(typeof(Modding.ModLoader).GetMethod("Initialize"));
-            //
-            //            Instruction callModInstr = Instruction.Create(OpCodes.Call, initializeFunc);
-            //            il.Append(pushRainworldRefInstr, callModInstr);
+            Instruction loadThis = Instruction.Create(OpCodes.Ldarg_0);
+            il.Append(loadThis);
+            
+            MethodReference initializeFunc = module.Import(typeof(Modding.ModLoader).GetMethod("Initialize"));
+            
+            Instruction callModInstr = Instruction.Create(OpCodes.Call, initializeFunc);
+            il.Append(callModInstr);
 
             /* 
             * That's it!
