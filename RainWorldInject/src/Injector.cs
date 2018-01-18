@@ -5,10 +5,12 @@ using Mono.Cecil;
 using Mono.Cecil.Cil;
 
 /* Todo:
- * - Try injecting the modloader into RainWorld.ctor (That way, Rainworld.Start is open for instrumentation/transpiling)
  * 
- * - Get rid of hardcoded paths (perhaps use a file browser to let user find Assembly-CSharp)
- * - Make a backup before patching
+ * - Get rid of hardcoded paths (perhaps use a file browser to let user find Assembly-CSharp, or a config file)
+ * - Automatically make a backup before patching
+ * - Ship injector with 0Harmony.dll, optionally include and install patched mono.dll
+ * 
+ * - Try injecting the modloader into RainWorld.ctor (That way, Rainworld.Start is open for instrumentation/transpiling)
  */
 
 namespace RainWorldInject {
