@@ -19,7 +19,6 @@ namespace RainWorldInject {
     /// 
     /// Created by Martijn Zandvliet, 10/01/2017
     public static class Injector {
-        public const string RootFolder = "D:\\Games\\SteamLibrary\\steamapps\\common\\Rain World";
         public const string AssemblyFolder = "D:\\Games\\SteamLibrary\\steamapps\\common\\Rain World\\RainWorld_Data\\Managed";
 
         public static bool Inject() {
