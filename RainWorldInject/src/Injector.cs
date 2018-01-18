@@ -113,31 +113,22 @@ namespace RainWorldInject {
                     if (type.Name.Equals("RainWorld")) {
                         Console.WriteLine("Found RainWorld class: " + module.FullyQualifiedName);
 
-                        try {
-                            InstrumentRainworldConstructor(type.Methods[0], module);
+                        foreach (MethodDefinition method in type.Methods) {
+                            try {
+                                if (method.Name == "Start") {
+                                    InstrumentRainworldStartMethod(method, module);
+                                }
+                            }
+                            catch (Exception e) {
+                                Console.WriteLine("!! Failed on: " + type.Name + "." + method.Name + ": " + e.Message);
+                            }
                         }
-                        catch (Exception e) {
-                            Console.WriteLine("!! Failed on: " + type.Name + "." + type.Methods[0].Name + ": " + e.Message);
-                        }
-
-                        //                        foreach (MethodDefinition method in type.Methods) {
-                        //                            Console.WriteLine("Found RainWorld class: " + module.FullyQualifiedName);
-                        //
-                        //                            try {
-                        //                                if (method.Name == "Start") {
-                        //                                    InstrumentRainworldStartMethod(method, module);
-                        //                                }
-                        //                            }
-                        //                            catch (Exception e) {
-                        //                                Console.WriteLine("!! Failed on: " + type.Name + "." + method.Name + ": " + e.Message);
-                        //                            }
-                        //                        }
                     }
                 }
             }
         }
 
-        private static void InstrumentRainworldConstructor(MethodDefinition method, ModuleDefinition module) {
+        private static void InstrumentRainworldStartMethod(MethodDefinition method, ModuleDefinition module) {
             Console.WriteLine("Patching target method: " + method.Name);
 
             ILProcessor il = method.Body.GetILProcessor();
@@ -147,7 +138,7 @@ namespace RainWorldInject {
             */
 
             MethodReference assemblyLoadFunc = module.Import(
-                typeof(System.Reflection.Assembly).GetMethod(
+                typeof(Assembly).GetMethod(
                     "LoadFrom",
                     new[] {typeof(string)}));
 
