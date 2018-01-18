@@ -35,21 +35,21 @@ Three big wins:
 
 # Developing Mods
 
-Check out this repository. Take note of the following:
+1. Download this repository
 
-1. Paths to important game folders are currently still hardcoded into the code and project setup. They will be different on your machine, so make sure to change the following:
+2. If your current Assembly-CSharp.dll file is already modded, the injector will not detect this and probably fail. Make sure you have the vanilla version of the game installed.
 
-* ModLoader.csproj -> Build/OutputPath
-* MyModName.csproj -> Build/OutputPath (for any mod project in the solution)
-* Inject.cs        -> public const string RootFolder, public const string AssemblyFolder
+3. Paths to important game folders are currently still hardcoded into the code and project setup. They will be different on your machine, so make sure to change the following:
 
-Injector also expects you to have made a backup of Assembly-CSharp.dll in the same folder, called Assembly-CSharp-Original.dll. It will do this automatically in the future.
+* RainWorldInject.csproj -> Debug/WorkingDirectory, should be set to game's root folder
+* ModLoader.csproj       -> Build/OutputPath, should be set to RainWorld_Data\Managed
+* MyModName.csproj       -> Build/OutputPath, should be set to RainWorld_Data\Managed (do this for any mod project in the solution)
 
 You should now have a VS2017 solution that patches your game when ran, builds the mod assemblies and puts them in the game mod folder.
 
 *Note: currently this project contains multiple example mods which will eventually migrate to their own repositories. They're purely there to help quickly iterate on the mod api design. You can delete them, overwrite them, or enable/disable them in the solution's build configuration.*
 
-2. Optionally, copy lib\PatchedMono\mono.dll to Rain World\RainWorld_Data\Mono, after backing up the original you find there. This will let dnSpy's debugger attach to the game.
+4. Optionally, copy lib\PatchedMono\mono.dll from this repository to Rain World\RainWorld_Data\Mono, after backing up the original you find there. This will let dnSpy's debugger attach to the game.
 
 # Debugging
 
