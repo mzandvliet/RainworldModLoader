@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 
 /// Rain World mod loader concept
 ///
@@ -20,18 +21,41 @@
 namespace RainWorldInject {
     class Program {
         static void Main(string[] args) {
-            bool success = Injector.Inject();
+
+            Injector injector = new Injector();
+            ConfigManager config = new ConfigManager("RainWorldInject.conf");
+
+            string path = config.GetValue("GamePath", @""); 
+
+            while (!CheckGameFolderValid(path)) {
+                Console.WriteLine("Please enter the game path where RainWorld.exe located:");
+                path = Console.ReadLine();
+            }
+            injector.AssemblyFolder = Path.Combine(path, @"RainWorld_Data\Managed");
+
+            bool success = false;
+            try {
+                success = injector.Inject();
+            } catch (Exception e) { // this might happen, eg. missing dll
+                Console.WriteLine("!! Error when trying to inject, {0} !!", e.Message);
+            }
 
             Console.WriteLine();
             if (success) {
+                config.SetValue("GamePath", path); // save config here so the saved value is valid.
                 Console.WriteLine("All done, enjoy!\n");
-            }
-            else {
+            } else {
                 Console.WriteLine("Something went wrong, quitting...\n");
             }
             
             Console.WriteLine("Press any key to exit...");
             Console.ReadLine();
+        }
+
+        public static bool CheckGameFolderValid(string path) {
+            if (!File.Exists(Path.Combine(path, @"RainWorld.exe"))) return false;
+            if (!File.Exists(Path.Combine(path, @"RainWorld_Data\Managed\Assembly-CSharp.dll"))) return false;
+            return true;
         }
     }
 }
