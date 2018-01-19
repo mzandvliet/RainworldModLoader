@@ -28,7 +28,7 @@ namespace RainWorldInject {
         public static bool Inject() {
             Console.WriteLine("Injector running...");
 
-            string unpatchedAssemblyPath = Path.Combine(AssemblyFolder, "Assembly-CSharp-Original.dll");
+            string unpatchedAssemblyPath = Path.Combine(AssemblyFolder, "Assembly-CSharp-Backup.dll");
             string patchedAssemblyPath = Path.Combine(AssemblyFolder, "Assembly-CSharp.dll");
 
             // Create resolver
@@ -183,6 +183,8 @@ namespace RainWorldInject {
             Instruction loadAssemblyInstr = Instruction.Create(OpCodes.Call, assemblyLoadFunc);
             il.InsertAfter(loadStringInstr, loadAssemblyInstr);
 
+            il.InsertAfter(loadAssemblyInstr, il.Create(OpCodes.Pop));
+
             /* 
             * Now RainWorld should load our ModLoader.dll assembly before
             * any other code runs! Great!
@@ -193,13 +195,13 @@ namespace RainWorldInject {
 
 
             // Push rainworld this reference onto eval stack so we can pass it along
-//            Instruction pushRainworldRefInstr = Instruction.Create(OpCodes.Ldarg_0);
-//            il.InsertAfter(loadAssemblyInstr, pushRainworldRefInstr);
-//
-//            MethodReference initializeFunc = module.Import(typeof(Modding.ModLoader).GetMethod("Initialize"));
-//
-//            Instruction callModInstr = Instruction.Create(OpCodes.Call, initializeFunc);
-//            il.InsertAfter(pushRainworldRefInstr, callModInstr);
+            Instruction pushRainworldRefInstr = Instruction.Create(OpCodes.Ldarg_0);
+            il.InsertAfter(loadAssemblyInstr, pushRainworldRefInstr);
+
+            MethodReference initializeFunc = module.Import(typeof(Modding.ModLoader).GetMethod("Initialize"));
+
+            Instruction callModInstr = Instruction.Create(OpCodes.Call, initializeFunc);
+            il.InsertAfter(pushRainworldRefInstr, callModInstr);
 
             /* 
             * That's it!

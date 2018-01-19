@@ -66,7 +66,7 @@ namespace Modding {
             foreach (Module module in assembly.GetModules()) {
                 foreach (Type type in module.GetTypes()) {
                     if (type.Name.EndsWith("Mod")) { // Todo: lol, make more rigorous
-                        Console.WriteLine("Found Mod! " + type.FullName);
+                        Debug.Log("Found Mod! " + type.FullName);
 
                         try {
                             var initMethod = type.GetMethod("Initialize");
