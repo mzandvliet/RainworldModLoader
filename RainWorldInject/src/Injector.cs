@@ -19,10 +19,10 @@ namespace RainWorldInject {
     /// Based on: http://www.codersblock.org/blog//2014/06/integrating-monocecil-with-unity.html
     /// 
     /// Created by Martijn Zandvliet, 10/01/2017
-    public static class Injector {
-        public const string AssemblyFolder = "RainWorld_Data\\Managed";
+    public class Injector {
+        public string AssemblyFolder = @"RainWorld_Data\Managed";
 
-        public static bool Inject() {
+        public bool Inject() {
             Console.WriteLine("Rain World Mod Loader: Code Injection...\n");
 
             string assemblyPath = Path.Combine(AssemblyFolder, "Assembly-CSharp.dll");
@@ -78,7 +78,7 @@ namespace RainWorldInject {
             return true;
         }
 
-        private static bool Backup(string assemblyPath, string backupPath) {
+        private bool Backup(string assemblyPath, string backupPath) {
             // Todo: first verify that assembly is original, with md5 hash
 
             // Handle old filenames, if present
@@ -102,7 +102,7 @@ namespace RainWorldInject {
             return true;
         }
 
-        private static void ProcessAssembly(AssemblyDefinition assembly) {
+        private void ProcessAssembly(AssemblyDefinition assembly) {
             foreach (ModuleDefinition module in assembly.Modules) {
                 Console.WriteLine("Module: " + module.FullyQualifiedName);
 
@@ -136,7 +136,7 @@ namespace RainWorldInject {
             }
         }
 
-        private static void InstrumentRainworldStartMethod(MethodDefinition method, ModuleDefinition module) {
+        private void InstrumentRainworldStartMethod(MethodDefinition method, ModuleDefinition module) {
             Console.WriteLine("Patching target method: " + method.Name);
 
             ILProcessor il = method.Body.GetILProcessor();
