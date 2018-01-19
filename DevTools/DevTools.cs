@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using Harmony;
 using UnityEngine;
 
@@ -28,20 +29,21 @@ namespace DevToolsMod
         private static void PatchHooks() {
             var harmony = HarmonyInstance.Create("com.andrewfm.rainworld.mod.devtools");
 
-            var target = typeof(RainWorldGame).GetConstructor(new Type[] { typeof(ProcessManager) });
-            var hook = typeof(DevToolsMod).GetMethod("RainWorldGame_Ctor_Post");
-            var transpiler = typeof(DevToolsMod).GetMethod("RainWorldGame_Ctor_Trans");
+            var methods = typeof(RainWorld).GetMethods(BindingFlags.Instance | BindingFlags.NonPublic);
+            var target = typeof(RainWorld).GetMethod("Start", BindingFlags.Instance | BindingFlags.NonPublic);
+            var hook = typeof(DevToolsMod).GetMethod("RainWorld_Start_Pre");
+            var transpiler = typeof(DevToolsMod).GetMethod("RainWorld_Start_Trans");
             
             harmony.Patch(target, null, new HarmonyMethod(hook), new HarmonyMethod(transpiler));
             
             Debug.Log("DevToolsMod Initialized");
         }
 
-        public static void RainWorldGame_Ctor_Post(RainWorldGame __instance) {
+        public static void RainWorld_Start_Pre(RainWorld __instance) {
             Debug.Log("CROOOTOTOTOROTOTOEOREOOER");
         }
 
-        public static IEnumerable<CodeInstruction> RainWorldGame_Ctor_Trans(IEnumerable<CodeInstruction> instructions) {
+        public static IEnumerable<CodeInstruction> RainWorld_Start_Trans(IEnumerable<CodeInstruction> instructions) {
 //            var codeInstructions = instructions as IList<CodeInstruction> ?? instructions.ToList();
 //            foreach (var instruction in codeInstructions) {
 //                Debug.Log(instruction.ToString());
