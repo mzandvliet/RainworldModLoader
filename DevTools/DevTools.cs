@@ -44,10 +44,10 @@ namespace DevToolsMod
         }
 
         public static IEnumerable<CodeInstruction> RainWorld_Start_Trans(IEnumerable<CodeInstruction> instructions) {
-//            var codeInstructions = instructions as IList<CodeInstruction> ?? instructions.ToList();
-//            foreach (var instruction in codeInstructions) {
-//                Debug.Log(instruction.ToString());
-//            }
+            var codeInstructions = instructions as IList<CodeInstruction> ?? instructions.ToList();
+            foreach (var instruction in codeInstructions) {
+                Debug.Log(instruction.ToString());
+            }
             return instructions;
         }
     }
