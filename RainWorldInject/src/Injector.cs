@@ -201,8 +201,8 @@ namespace RainWorldInject {
 
             /* Insert the call to load our ModLoader assembly (and Harmony) */
 
-            string harmonyAssemblyPath = Path.Combine("Mods", "0Harmony.dll");
-            string modLoaderAssemblyPath = Path.Combine("Mods", "ModLoader.dll");
+            string harmonyAssemblyPath = Path.Combine("RainWorld_Data\\Managed\\", "0Harmony.dll");
+            string modLoaderAssemblyPath = Path.Combine("RainWorld_Data\\Managed\\", "ModLoader.dll");
             var loadAssemblyInstr = InsertLoadAssemblyInstructions(il, assemblyLoadFunc, harmonyAssemblyPath);
                 loadAssemblyInstr = InsertLoadAssemblyInstructions(il, assemblyLoadFunc, modLoaderAssemblyPath);
 
