@@ -10,10 +10,19 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CamoMod", "CamoMod\CamoMod.csproj", "{FA43F087-50E7-48F3-A907-14F7D024D0BC}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CoopMod", "CoopMod\CoopMod.csproj", "{EAA49728-FBEB-4FA0-BD99-4BBDB3B238FA}"
+	ProjectSection(ProjectDependencies) = postProject
+		{A7D73C5F-410E-4984-A997-B8D8094038B9} = {A7D73C5F-410E-4984-A997-B8D8094038B9}
+	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReplayGhostMod", "ReplayGhostMod\ReplayGhostMod.csproj", "{F244C2DE-B822-4A06-9AAE-9AE93F72B48E}"
+	ProjectSection(ProjectDependencies) = postProject
+		{A7D73C5F-410E-4984-A997-B8D8094038B9} = {A7D73C5F-410E-4984-A997-B8D8094038B9}
+	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DevToolsMod", "DevTools\DevToolsMod.csproj", "{2F8403C7-8FB6-4F71-894C-A4DEC432F4F7}"
+	ProjectSection(ProjectDependencies) = postProject
+		{A7D73C5F-410E-4984-A997-B8D8094038B9} = {A7D73C5F-410E-4984-A997-B8D8094038B9}
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

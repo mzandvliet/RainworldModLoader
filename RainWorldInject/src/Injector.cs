@@ -199,17 +199,12 @@ namespace RainWorldInject {
             MethodReference assemblyLoadFunc = module.Import(
                 typeof(Assembly).GetMethod("LoadFrom", new[] { typeof(string) }));
 
-            /* Insert the call to load our ModLoader assembly */
+            /* Insert the call to load our ModLoader assembly (and Harmony) */
 
-            string modLoaderAssemblyPath = Path.Combine("RainWorld_Data\\Managed", "ModLoader.dll");
-
-            Instruction loadStringInstr = il.Create(OpCodes.Ldstr, modLoaderAssemblyPath);
-            il.Body.Instructions.Add(loadStringInstr);
-
-            Instruction loadAssemblyInstr = il.Create(OpCodes.Call, assemblyLoadFunc);
-            il.InsertAfter(loadStringInstr, loadAssemblyInstr);
-
-            il.InsertAfter(loadAssemblyInstr, il.Create(OpCodes.Pop));
+            string harmonyAssemblyPath = Path.Combine("Mods", "0Harmony.dll");
+            string modLoaderAssemblyPath = Path.Combine("Mods", "ModLoader.dll");
+            var loadAssemblyInstr = InsertLoadAssemblyInstructions(il, assemblyLoadFunc, harmonyAssemblyPath);
+                loadAssemblyInstr = InsertLoadAssemblyInstructions(il, assemblyLoadFunc, modLoaderAssemblyPath);
 
             /* Now RainWorld should load our ModLoader.dll assembly before
              * any other code runs! Great!
@@ -234,6 +229,17 @@ namespace RainWorldInject {
              * The game now loads our ModLoader, which in turn will
              * load any number of mods found in the Mods directory.
              */
+        }
+
+        private static Instruction InsertLoadAssemblyInstructions(ILProcessor il, MethodReference assemblyLoadFunc, string assemblyPath) {
+            Instruction loadStringInstr = il.Create(OpCodes.Ldstr, assemblyPath);
+            il.Body.Instructions.Add(loadStringInstr);
+
+            Instruction loadAssemblyInstr = il.Create(OpCodes.Call, assemblyLoadFunc);
+            il.InsertAfter(loadStringInstr, loadAssemblyInstr);
+
+            il.InsertAfter(loadAssemblyInstr, il.Create(OpCodes.Pop));
+            return loadAssemblyInstr;
         }
     }
 

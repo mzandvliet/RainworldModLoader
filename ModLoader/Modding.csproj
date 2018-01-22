@@ -16,7 +16,7 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>D:\Games\SteamLibrary\steamapps\common\Rain World\RainWorld_Data\Managed\</OutputPath>
+    <OutputPath>D:\Games\SteamLibrary\steamapps\common\Rain World\Mods\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>

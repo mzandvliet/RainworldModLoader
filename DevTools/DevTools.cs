@@ -32,11 +32,16 @@ namespace DevToolsMod
             Debug.Log("DevToolsMod patched in all its hooks and is good to go!");
         }
         
+        /// <summary>
+        /// Transpiles RainWorld.Start()
+        /// </summary>
+        /// <param name="instructions"></param>
+        /// <returns></returns>
         public static IEnumerable<CodeInstruction> RainWorld_Start_Trans(IEnumerable<CodeInstruction> instructions) {
             var codeInstructions = new List<CodeInstruction>(instructions);
             
-            // this.buildType = RainWorld.BuildType.Distribution;
-            codeInstructions[1].operand = 2; 
+            // this.buildType = RainWorld.BuildType.Testing;
+            codeInstructions[1].operand = RainWorld.BuildType.Testing; 
 
             // this.setup = DevTools.RainWorld_LoadSetupValues
             var loadSetupValuesMethod = AccessTools.Method(typeof(DevToolsMod), "RainWorld_LoadSetupValues", new[] { typeof(bool) });
@@ -45,9 +50,11 @@ namespace DevToolsMod
             return codeInstructions.AsEnumerable();
         }
 
-
-        // Todo: make this mod friendly, use dictionary key/value etc.
+        /// <summary>
+        /// A function that completely replaces RainWorld.LoadSetupValues()
+        /// </summary>
         public static RainWorldGame.SetupValues RainWorld_LoadSetupValues(bool distributionBuild) {
+            // Todo: make this mod friendly, use dictionary key/value etc.
             RainWorldGame.SetupValues values;
 
             if (distributionBuild || !System.IO.File.Exists(RWCustom.Custom.RootFolderDirectory() + "setup.txt")) {

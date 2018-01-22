@@ -21,10 +21,10 @@ Not quite there yet! If you're not a developer buy just looking to play, stay tu
 
 3. Paths to important game folders are currently still hardcoded into the code and project setup. They will be different on your machine, so make sure to change the following:
 
-* RainWorldInject.csproj -> Debug/WorkingDirectory, should be set to game's root folder
-* ModLoader.csproj       -> Build/OutputPath, should be set to RainWorld_Data\Managed
-* MyModName.csproj       -> Build/OutputPath, should be set to RainWorld_Data\Managed (do this for any mod project in the solution)
-* Similarly, references to Assembly-CSharp.dll and UnityEngine.dll need to be pointed to files in your RainWorld_Data\Managed folder.
+* RainWorldInject.csproj -> Build/OutputPath, should be set to Rain World\Mods
+* ModLoader.csproj       -> Build/OutputPath, should be set to Rain World\RainWorld_Data\Managed
+* MyMod.csproj           -> Build/OutputPath, should be set to Rain World\RainWorld_Data\Managed (do this for any mod project in the solution)
+* Similarly, references to Assembly-CSharp.dll and UnityEngine.dll need to be pointed to files in your Rain World\RainWorld_Data\Managed folder.
 
 You should now have a VS2017 solution that patches your game when ran, builds the mod assemblies and puts them in the game mod folder. Do that once, and you should be able to launch the game and see the mods take effect. This can be verified in the produced consoleLog.txt file. If anything goes wrong, check exceptionLog.txt.
 
