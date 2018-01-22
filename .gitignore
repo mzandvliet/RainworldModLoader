@@ -1,10 +1,9 @@
 *.user
 .vs/
-MyMod/obj/
 RainWorldInject/bin/
 RainWorldInject/obj/
-CamoMod/obj/
 ModLoader/obj/
+CamoMod/obj/
 CoopMod/obj/
 ReplayGhostMod/obj/
 DevTools/bin/Debug/

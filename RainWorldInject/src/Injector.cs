@@ -5,13 +5,11 @@ using Mono.Cecil;
 using Mono.Cecil.Cil;
 
 /* Todo:
+ * 
+ * - Get rid of hardcoded paths (perhaps use a file browser to let user find Assembly-CSharp, or a config file)
+ * - Ship injector with 0Harmony.dll, optionally include and install patched mono.dll
+ * 
  * - Try injecting the modloader into RainWorld.ctor (That way, Rainworld.Start is open for instrumentation/transpiling)
- * 
- * That doesn't work. For some reason the constructor doesn't get called.
- * Next idea: try inserting an Awake method
- * 
- * - Get rid of hardcoded paths (perhaps use a file browser to let user find Assembly-CSharp)
- * - Make a backup before patching
  */
 
 namespace RainWorldInject {
@@ -22,15 +20,66 @@ namespace RainWorldInject {
     /// 
     /// Created by Martijn Zandvliet, 10/01/2017
     public static class Injector {
-        public const string RootFolder = "D:\\Games\\SteamLibrary\\steamapps\\common\\Rain World";
-        public const string AssemblyFolder = "D:\\Games\\SteamLibrary\\steamapps\\common\\Rain World\\RainWorld_Data\\Managed";
+        public const string AssemblyFolder = "RainWorld_Data\\Managed";
 
         public static bool Inject() {
-            Console.WriteLine("Injector running...");
+            Console.WriteLine("Rain World Mod Loader: Code Injection...\n");
 
-            string unpatchedAssemblyPath = Path.Combine(AssemblyFolder, "Assembly-CSharp-Backup.dll");
-            string patchedAssemblyPath = Path.Combine(AssemblyFolder, "Assembly-CSharp.dll");
+            string assemblyPath = Path.Combine(AssemblyFolder, "Assembly-CSharp.dll");
+            string assemblyBackupPath = Path.Combine(AssemblyFolder, "Assembly-CSharp-Backup.dll");
 
+            // First, back up the original file before we do anything to it
+
+            if (!File.Exists(assemblyPath)) {
+                Console.WriteLine("!! Can't locate the file Assembly-CSharp.dll !!");
+                return false;
+            }
+
+            if (Backup(assemblyPath, assemblyBackupPath)) {
+                Console.WriteLine("Backed up original game file as Assembly-CSharp-Backup.dll\n");
+            }
+            else {
+                return false;
+            }
+
+            // Read assembly
+
+            var readerParameters = CreateReaderParameters(assemblyBackupPath);
+            AssemblyDefinition assembly = AssemblyDefinition.ReadAssembly(assemblyBackupPath, readerParameters);
+
+            try {
+                Console.WriteLine("Processing " + Path.GetFileName(assemblyBackupPath) + "...");
+                ProcessAssembly(assembly);
+            }
+            catch (Exception e) {
+                Console.WriteLine(
+                    "!! Exception while processing assembly: " + assembly.Name +
+                    ", Reason: " + e.Message);
+                return false;
+            }
+
+            // Write the patched assembly to the game directory
+
+            if (File.Exists(assemblyPath)) {
+                try {
+                    File.Delete(assemblyPath);
+                }
+                catch (Exception e) {
+                    Console.WriteLine(
+                        "!! Can't overwrite Assembly-CSharp.dll because it is in use (is the" +
+                        " game running?) Reason: " + e.Message);
+                    return false;
+                }
+                
+            }
+
+            Console.WriteLine("Writing to " + assemblyPath + "...");
+            assembly.Write(assemblyPath);
+
+            return true;
+        }
+
+        private static ReaderParameters CreateReaderParameters(string assemblyBackupPath) {
             // Create resolver
             DefaultAssemblyResolver assemblyResolver = new DefaultAssemblyResolver();
             assemblyResolver.AddSearchDirectory(AssemblyFolder);
@@ -45,15 +94,16 @@ namespace RainWorldInject {
             // Process the game assembly
 
             // mdbs have the naming convention myDll.dll.mdb whereas pdbs have myDll.pdb
-            String mdbPath = unpatchedAssemblyPath + ".mdb";
-            String pdbPath = unpatchedAssemblyPath.Substring(0, unpatchedAssemblyPath.Length - 3) + "pdb";
+            String mdbPath = assemblyBackupPath + ".mdb";
+            String pdbPath = assemblyBackupPath.Substring(0, assemblyBackupPath.Length - 3) + "pdb";
 
             // Figure out if there's an pdb/mdb to go with it
             if (File.Exists(pdbPath)) {
                 readerParameters.ReadSymbols = true;
                 readerParameters.SymbolReaderProvider = new Mono.Cecil.Pdb.PdbReaderProvider();
                 writerParameters.WriteSymbols = true;
-                writerParameters.SymbolWriterProvider = new Mono.Cecil.Mdb.MdbWriterProvider(); // pdb written out as mdb, as mono can't work with pdbs
+                writerParameters.SymbolWriterProvider = new Mono.Cecil.Mdb.MdbWriterProvider();
+                    // pdb written out as mdb, as mono can't work with pdbs
             }
             else if (File.Exists(mdbPath)) {
                 readerParameters.ReadSymbols = true;
@@ -67,36 +117,29 @@ namespace RainWorldInject {
                 writerParameters.WriteSymbols = false;
                 writerParameters.SymbolWriterProvider = null;
             }
+            return readerParameters;
+        }
 
-            // Read assembly
-            AssemblyDefinition assembly = AssemblyDefinition.ReadAssembly(unpatchedAssemblyPath, readerParameters);
+        private static bool Backup(string assemblyPath, string backupPath) {
+            // Todo: first verify that assembly is original, with md5 hash
 
-            // Process it if it hasn't already
-            Console.WriteLine("Processing " + Path.GetFileName(unpatchedAssemblyPath) + "...");
-
-            try {
-                ProcessAssembly(assembly);
-            }
-            catch (Exception e) {
-                // Skip writing if any exception occurred
-                Console.WriteLine("!! Exception while processing assembly: " + assembly.FullName + ", " + e.Message);
-                return false;
+            // Handle old filenames, if present
+            string assemblyOriginalPath = Path.Combine(AssemblyFolder, "Assembly-CSharp-Original.dll");
+            if (File.Exists(assemblyOriginalPath) && !File.Exists(backupPath)) {
+                Console.WriteLine("Detected old ModLoader setup, updating filenames...");
+                File.Move(assemblyOriginalPath, backupPath);
             }
 
-            // Write the patched assembly to the game directory
-            if (File.Exists(patchedAssemblyPath)) {
+            // Backup vanilla assembly
+            if (!File.Exists(backupPath)) {
                 try {
-                    File.Delete(patchedAssemblyPath);
+                    File.Copy(assemblyPath, backupPath);
                 }
                 catch (Exception e) {
-                    Console.WriteLine("!! Can't overwrite Assembly-CSharp.dll because it is in use (is the game running?)");
+                    Console.WriteLine("!! Couldn't back up original game files !!");
                     return false;
                 }
-                
             }
-
-            Console.WriteLine("Writing to " + patchedAssemblyPath + "...");
-            assembly.Write(patchedAssemblyPath, writerParameters);
 
             return true;
         }
@@ -106,35 +149,23 @@ namespace RainWorldInject {
                 Console.WriteLine("Module: " + module.FullyQualifiedName);
 
                 /*
-                 * Here we go hunting for classes, methods, and other bits of IL that we want to inject into
+                 * Here we go hunting for classes, methods, and other bits of IL that
+                 * we want to inject into
                  * 
-                 * In this case we want to inject code that loads our MyMod assembly as soon as
-                 * the game runs RainWorld.Start(), and then calls a method from that mod.
+                 * In this case we want to inject code that loads our MyMod assembly
+                 * as soon as the game runs RainWorld.Start(), and then calls a method
+                 * from that mod.
                  */
 
                 foreach (TypeDefinition type in module.Types) {
                     if (type.Name.Equals("RainWorld")) {
-                        Console.WriteLine("Found RainWorld class: " + module.FullyQualifiedName);
+                        Console.WriteLine("Found class: " + module.FullyQualifiedName);
                         try {
                             AddAwakeMethod(module, type);
-                            //InstrumentRainworldConstructor(type.Methods[0], module);
                         }
                         catch (Exception e) {
                             Console.WriteLine("!! Failed on: " + type.Name + "." + type.Methods[0].Name + ": " + e.Message);
                         }
-
-                        //                        foreach (MethodDefinition method in type.Methods) {
-                        //                            Console.WriteLine("Found RainWorld class: " + module.FullyQualifiedName);
-                        //
-                        //                            try {
-                        //                                if (method.Name == "Start") {
-                        //                                    InstrumentRainworldStartMethod(method, module);
-                        //                                }
-                        //                            }
-                        //                            catch (Exception e) {
-                        //                                Console.WriteLine("!! Failed on: " + type.Name + "." + method.Name + ": " + e.Message);
-                        //                            }
-                        //                        }
                     }
                 }
             }
@@ -147,16 +178,8 @@ namespace RainWorldInject {
             type.Methods.Add(method);
 
             ILProcessor worker = method.Body.GetILProcessor();
-            //InsertDebugLog(module, worker, method);
             InsertModLoaderInstructions(module, worker, method);
             method.Body.Instructions.Add(Instruction.Create(OpCodes.Ret));
-        }
-
-        private static void InsertDebugLog(ModuleDefinition module, ILProcessor worker, MethodDefinition m) {
-            Instruction msg = worker.Create(OpCodes.Ldstr, "Initializating...\n");
-            MethodReference writeline = module.Import(typeof(UnityEngine.Debug).GetMethod("Log", new Type[] { typeof(string) }));
-            m.Body.Instructions.Add(msg);
-            m.Body.Instructions.Add(Instruction.Create(OpCodes.Call, writeline));
         }
 
         private static void InsertModLoaderInstructions(ModuleDefinition module, ILProcessor il, MethodDefinition method) {
@@ -167,9 +190,7 @@ namespace RainWorldInject {
             */
 
             MethodReference assemblyLoadFunc = module.Import(
-                typeof(System.Reflection.Assembly).GetMethod(
-                    "LoadFrom",
-                    new[] { typeof(string) }));
+                typeof(Assembly).GetMethod("LoadFrom", new[] { typeof(string) }));
 
             /*
             * Insert the call to load our ModLoader assembly
