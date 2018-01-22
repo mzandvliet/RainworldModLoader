@@ -22,7 +22,7 @@ Not quite there yet! If you're not a developer buy just looking to play, stay tu
 3. Paths to important game folders are currently still hardcoded into the code and project setup. They will be different on your machine, so make sure to change the following:
 
 * RainWorldInject.csproj -> Build/OutputPath, should be set to Rain World\Mods
-* ModLoader.csproj       -> Build/OutputPath, should be set to Rain World\Mods
+* ModLoader.csproj       -> Build/OutputPath, should be set to Rain World\RainWorld_Data\Managed
 * MyCustomMod.csproj           -> Build/OutputPath, should be set to Rain World\Mods\MyCustomMod (do this for any mod project in the solution)
 * Similarly, references to Assembly-CSharp.dll and UnityEngine.dll need to be pointed to files in your Rain World\RainWorld_Data\Managed folder.
 
