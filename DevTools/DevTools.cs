@@ -13,6 +13,10 @@ using UnityEngine;
 
 namespace DevToolsMod
 {
+    /// <summary>
+    /// Enabled the built-in develop tools functionality detailed here:
+    /// http://rain-world-modding.wikia.com/wiki/Dev_Tools
+    /// </summary>
     public static class DevToolsMod {
         public static void Initialize() {
             PatchHooks();
@@ -41,9 +45,8 @@ namespace DevToolsMod
             return codeInstructions.AsEnumerable();
         }
 
-        // In RainWorld.LoadSetupValues
-        //  this.devToolsActive = true;
-        // Todo: make this mod friendly, dictionary key/value etc.
+
+        // Todo: make this mod friendly, use dictionary key/value etc.
         public static RainWorldGame.SetupValues RainWorld_LoadSetupValues(bool distributionBuild) {
             RainWorldGame.SetupValues values;
 
