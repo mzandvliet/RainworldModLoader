@@ -88,26 +88,17 @@ namespace Modding {
         }
     }
 
-//    public interface IMod {
-//        string Name { get; }
-//        string Version { get; }
-//
-//        void Init(RainWorld rainworld);
-//    }
-
     public static class ModLogger {
         public static void EnableLogging() {
-            if (File.Exists("exceptionLog.txt"))
-                File.Delete("exceptionLog.txt");
             if (File.Exists("consoleLog.txt"))
                 File.Delete("consoleLog.txt");
-            Application.RegisterLogCallback(new Application.LogCallback(HandleLog));
+            Application.RegisterLogCallback(HandleLog);
         }
 
         public static void HandleLog(string logString, string stackTrace, LogType type) {
             if (type == LogType.Error || type == LogType.Exception) {
-                File.AppendAllText("exceptionLog.txt", logString + Environment.NewLine);
-                File.AppendAllText("exceptionLog.txt", stackTrace + Environment.NewLine);
+                File.AppendAllText("consoleLog.txt", logString + Environment.NewLine);
+                File.AppendAllText("consoleLog.txt", stackTrace + Environment.NewLine);
                 return;
             }
             File.AppendAllText("consoleLog.txt", logString + Environment.NewLine);

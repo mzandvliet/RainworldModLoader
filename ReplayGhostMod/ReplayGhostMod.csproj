@@ -50,6 +50,8 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ReplayGhost.cs" />
+    <Compile Include="ReplayGhostGraphics.cs" />
     <Compile Include="ReplayGhostMod.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
