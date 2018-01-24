@@ -10,6 +10,7 @@ namespace ReplayGhostMod {
     public class ReplayGhost {
 
         public Vector2 Pos;
+        public Vector2 Rot;
     }
 }
 

@@ -5,8 +5,29 @@ using Harmony;
 using UnityEngine;
 
 /* Todo:
- * - _currentGhostRoom.BlinkShortCut();
+ * - game crashes on exit, see exception below
+ * - select PB run, or let user select run
+ * 
+ * - It'd be nice to see the ghost using shortcuts, with correct color, _currentGhostRoom.BlinkShortCut();
+ * - Could we still use abstractphysicalobject, and set its collision flags and such to false?
+ * - Show the split times
+ * - Implement the wait-for-player-to-catch-up mechanic, showing the splits
+ * - Record and render more slugcat state
+ * 
+ * 
+ObjectDisposedException: The object was used after being disposed.
+System.IO.StreamWriter.Write (string) <IL 0x00015, 0x0005c>
+System.IO.TextWriter.WriteLine (string) <IL 0x00002, 0x0002d>
+ReplayGhostMod.ReplayGhostMod.UpdateRecording () <IL 0x00094, 0x003de>
+ReplayGhostMod.ReplayGhostMod.RainWorldGame_Update_Post (RainWorldGame) <IL 0x00022, 0x000d7>
+(wrapper dynamic-method) RainWorldGame.Update_Patch1 (object) <IL 0x0058d, 0x01354>
+MainLoopProcess.RawUpdate (single) <IL 0x00027, 0x00081>
+RainWorldGame.RawUpdate (single) <IL 0x00611, 0x01757>
+ProcessManager.Update (single) <IL 0x00037, 0x000cc>
+RainWorld.Update () <IL 0x0000b, 0x0003f>
  */
+
+
 
 namespace ReplayGhostMod {
     /// <summary>
@@ -53,11 +74,25 @@ namespace ReplayGhostMod {
                 Directory.CreateDirectory(RecordingFolder);
             }
             
+            LoadReplay();
+            StartRecording();
+
+            _ghost = new ReplayGhost();
+        }
+
+        private static void StartRecording() {
+            _writer = new StreamWriter(Path.Combine(RecordingFolder, GetNewReplayFileName()), false);
+        }
+
+        private static void LoadReplay() {
             var replays = Directory.GetFiles(RecordingFolder);
+            if (replays.Length == 0) {
+                Debug.Log("No recorded runs available");
+                return;
+            }
+
             var replay = replays[0];
             _replay = File.OpenText(replay);
-            _writer = new StreamWriter(Path.Combine(RecordingFolder, GetNewReplayFileName()), false);
-            _ghost = new ReplayGhost();
         }
 
         //private void ExitGame(bool asDeath, bool asQuit)
@@ -76,9 +111,17 @@ namespace ReplayGhostMod {
         }
 
         private static void UpdatePlayback() {
-            if (!_replay.EndOfStream) {
+            if (_replay != null && !_replay.EndOfStream) { 
                 string line = _replay.ReadLine();
-                var ghostWorldCoords = ReadWorldCoord(line);
+
+                WorldCoordinate ghostWorldCoords;
+                Vector2 ghostPos;
+                Vector2 ghostRot;
+                Read(line, out ghostWorldCoords, out ghostPos, out ghostRot);
+
+                _ghost.Pos = ghostPos;
+                _ghost.Rot = ghostRot;
+
                 if (ghostWorldCoords.room != _ghostWorldCoords.room) {
                     MoveGhostSpriteToRoom(ghostWorldCoords);
                 }
@@ -86,15 +129,14 @@ namespace ReplayGhostMod {
                 if (_player.pos.room != _playerWorldCoords.room) {
                     MoveGhostSpriteToRoom(ghostWorldCoords);
                 }
-
-                _ghost.Pos = ReadPosition(line);
             }
         }
 
         private static void UpdateRecording() {
             var worldCoord = _player.realizedCreature.coord.SaveToString();
             var chunkPos = _player.realizedCreature.mainBodyChunk.pos;
-            _writer.WriteLine($"{worldCoord}, ({chunkPos.x}, {chunkPos.y})");
+            var chunkRot = _player.realizedCreature.mainBodyChunk.Rotation;
+            _writer.WriteLine($"{worldCoord}|{chunkPos.x},{chunkPos.y}|{chunkRot.x},{chunkRot.y}");
         }
 
         private static void MoveGhostSpriteToRoom(WorldCoordinate ghostWorldCoordinate) {
@@ -113,17 +155,18 @@ namespace ReplayGhostMod {
             _playerWorldCoords = _player.pos;
         }
 
-        private static WorldCoordinate ReadWorldCoord(string line) {
-            var parts = line.Split(new[] {","}, StringSplitOptions.RemoveEmptyEntries);
-            var c = WorldCoordinate.FromString(parts[0]);
-            return c;
+        private static void Read(string line, out WorldCoordinate c, out Vector2 p, out Vector2 r) {
+            var parts = line.Split(new[] {"|"}, StringSplitOptions.RemoveEmptyEntries);
+            c = WorldCoordinate.FromString(parts[0]);
+            p = ReadVector2(parts[1]);
+            r = ReadVector2(parts[2]);
         }
 
-        private static Vector2 ReadPosition(string line) {
-            var parts = line.Split(new [] {"(", ",", ")"}, StringSplitOptions.RemoveEmptyEntries);
+        private static Vector2 ReadVector2(string line) {
+            var parts = line.Split(new [] {","}, StringSplitOptions.RemoveEmptyEntries);
             var v = new Vector2(
-                float.Parse(parts[parts.Length - 2]),
-                float.Parse(parts[parts.Length - 1]));
+                float.Parse(parts[0]),
+                float.Parse(parts[1]));
             return v;
         }
 

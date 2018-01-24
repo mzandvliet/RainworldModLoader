@@ -17,7 +17,7 @@ namespace ReplayGhostMod {
         public override void InitiateSprites(RoomCamera.SpriteLeaser sLeaser, RoomCamera rCam) {
             sLeaser.sprites = new FSprite[1];
             sLeaser.sprites[0] = new FSprite("KrakenMask1", true);
-            sLeaser.sprites[0].color = new Color(1f, 0f, 0f, 1f);
+            sLeaser.sprites[0].color = new Color(1f, 0f, 0.4f, 1f);
 
             AddToContainer(sLeaser, rCam, null);
         }
@@ -28,6 +28,7 @@ namespace ReplayGhostMod {
             Vector2 vector = _ghost.Pos - camPos; //Vector2.Lerp(ghost.bodyChunks[0].lastPos, ghost.bodyChunks[0].pos, timeStacker)
             sLeaser.sprites[0].x = vector.x;
             sLeaser.sprites[0].y = vector.y;
+            sLeaser.sprites[0].rotation = RWCustom.Custom.Angle(_ghost.Rot, Vector2.up);
             sLeaser.sprites[0].isVisible = true;
         }
 
