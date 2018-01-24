@@ -21,13 +21,10 @@ namespace ReplayGhostMod {
         private static ReplayGhostGraphics _ghostGraphics;
 
         private static TextWriter _writer;
-        private static TextWriter _reader;
-
         private static StreamReader _replay;
 
         private static WorldCoordinate _ghostWorldCoords;
         private static WorldCoordinate _playerWorldCoords;
-        private static Room _currentGhostRoom;
 
         public static void Initialize() {
             PatchHooks();
@@ -58,23 +55,15 @@ namespace ReplayGhostMod {
             
             var replays = Directory.GetFiles(RecordingFolder);
             var replay = replays[0];
-
             _replay = File.OpenText(replay);
-
             _writer = new StreamWriter(Path.Combine(RecordingFolder, GetNewReplayFileName()), false);
-
-            /* 
-             * Want to add ghost as abstractphysicalobject
-             * Need to fix Realize so its extensible
-             */
-
             _ghost = new ReplayGhost();
         }
 
         //private void ExitGame(bool asDeath, bool asQuit)
         public static void RainWorldGame_ExitGame_Pre(RainWorldGame __instance, bool asDeath, bool asQuit) {
             _writer.Close();
-            // Todo: last line goes wrong
+            // Todo: last line goes wrong sometimes
         }
 
         public static void RainWorldGame_Update_Post(RainWorldGame __instance) {
@@ -82,46 +71,34 @@ namespace ReplayGhostMod {
                 return;
             }
 
-//            if (Time.frameCount % 60 == 0) {
-//                if (_ghostGraphics != null) {
-//                    _player.world.GetAbstractRoom(_ghostWorldCoords.room).realizedRoom.RemoveObject(_ghostGraphics);
-//                }
-//                else {
-//                    _ghost.Pos = _player.realizedCreature.mainBodyChunk.pos;
-//                    Room activeRoom = _player.world.GetAbstractRoom(_player.pos.room).realizedRoom;
-//                    _ghostGraphics = new ReplayGhostGraphics(_ghost);
-//                    activeRoom.AddObject(_ghostGraphics);
-//                }
-//            }
+            UpdatePlayback();
+            UpdateRecording();
+        }
 
-
-            // Todo: room change for ghost and player are correct, yet sprites don't get cleaned up!
-
-            var worldCoord = _player.realizedCreature.coord.SaveToString();
-            var chunkPos = _player.realizedCreature.mainBodyChunk.pos;
-
+        private static void UpdatePlayback() {
             if (!_replay.EndOfStream) {
                 string line = _replay.ReadLine();
                 var ghostWorldCoords = ReadWorldCoord(line);
                 if (ghostWorldCoords.room != _ghostWorldCoords.room) {
-                    Debug.Log("Ghost moved! prev room: " + (_currentGhostRoom != null));
-                    UpdateTo(ghostWorldCoords);
+                    MoveGhostSpriteToRoom(ghostWorldCoords);
                 }
-            
+
                 if (_player.pos.room != _playerWorldCoords.room) {
-                    Debug.Log("Player moved! prev room: " + (_currentGhostRoom != null));
-                    UpdateTo(ghostWorldCoords);
+                    MoveGhostSpriteToRoom(ghostWorldCoords);
                 }
-            
+
                 _ghost.Pos = ReadPosition(line);
             }
-            
+        }
+
+        private static void UpdateRecording() {
+            var worldCoord = _player.realizedCreature.coord.SaveToString();
+            var chunkPos = _player.realizedCreature.mainBodyChunk.pos;
             _writer.WriteLine($"{worldCoord}, ({chunkPos.x}, {chunkPos.y})");
         }
 
-        private static void UpdateTo(WorldCoordinate ghostWorldCoordinate) {
+        private static void MoveGhostSpriteToRoom(WorldCoordinate ghostWorldCoordinate) {
             if (_ghostGraphics != null) {
-                // Todo: why doesn't this work?
                 _ghostGraphics.Destroy();
                 _player.world.GetAbstractRoom(_ghostWorldCoords.room).realizedRoom.RemoveObject(_ghostGraphics);
             }
@@ -149,7 +126,6 @@ namespace ReplayGhostMod {
                 float.Parse(parts[parts.Length - 1]));
             return v;
         }
-
 
 
         private static string GetNewReplayFileName() {
