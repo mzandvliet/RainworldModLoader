@@ -5,8 +5,11 @@ using Harmony;
 using UnityEngine;
 
 /* Todo:
- * - game crashes on exit, see exception below
- * - select PB run, or let user select run
+ * - Instead of storing complete state every frame, store changes
+ *      - this way you only log room on room change, and so on :)
+ *      - how to reason about interpolating snapshots?
+ *          - you can't interpolate a room change! I mean, classically.
+ * - let user select run
  * - investigate frame timing. (we should probably timestamp and interpolate, instead of playing
  * back raw frames)
  * 
@@ -28,6 +31,8 @@ MainLoopProcess.RawUpdate (single) <IL 0x00027, 0x00081>
 RainWorldGame.RawUpdate (single) <IL 0x00611, 0x01757>
 ProcessManager.Update (single) <IL 0x00037, 0x000cc>
 RainWorld.Update () <IL 0x0000b, 0x0003f>
+
+    game start time, game current time... I guess Time.time?
  */
 
 
@@ -50,6 +55,12 @@ namespace ReplayGhostMod {
 
         private static WorldCoordinate _ghostWorldCoords;
         private static WorldCoordinate _playerWorldCoords;
+
+        private static Snapshot _last;
+        private static Snapshot _current;
+
+
+        private static float _sessionStartTime;
 
         public static void Initialize() {
             PatchHooks();
@@ -81,6 +92,8 @@ namespace ReplayGhostMod {
             LoadReplay();
             StartRecording();
 
+            _sessionStartTime = Time.time;
+
             _ghost = new ReplayGhost();
         }
 
@@ -101,8 +114,9 @@ namespace ReplayGhostMod {
 
         //private void ExitGame(bool asDeath, bool asQuit)
         public static void RainWorldGame_ExitGame_Pre(RainWorldGame __instance, bool asDeath, bool asQuit) {
+            _writer.WriteLine($"time={Time.time-_sessionStartTime} seconds");
+
             _writer.Close();
-            // Todo: last line goes wrong sometimes
         }
 
         public static void RainWorldGame_Update_Post(RainWorldGame __instance) {
@@ -111,33 +125,49 @@ namespace ReplayGhostMod {
             }
 
             ReadRecording();
-            WriteRecording();
+
+            if (Time.frameCount % 10 == 0) {
+                WriteRecording();
+            }
         }
 
         private static void ReadRecording() {
-            if (_replay != null && !_replay.EndOfStream) { 
-                string line = _replay.ReadLine();
+            if (_replay != null && !_replay.EndOfStream) {
 
-                WorldCoordinate ghostWorldCoords;
-                Vector2 ghostPos;
-                Vector2 ghostRot;
-                Read(line, out ghostWorldCoords, out ghostPos, out ghostRot);
+                if (GetSessionTime() > _current.Time) {
+                    string line = _replay.ReadLine();
+                    _last = _current;
+                    _current = ReadSnapshot(line);
+                }
 
-                _ghost.Pos = ghostPos;
-                _ghost.Rot = ghostRot;
+                float lerp = Mathf.Clamp01((GetSessionTime() - _last.Time) / (_current.Time - _last.Time));
+                Snapshot snapshot = Snapshot.Interpolate(_last, _current, lerp);
 
-                if (ghostWorldCoords.room != _ghostWorldCoords.room ||
+                _ghost.Pos = snapshot.Pos;
+                _ghost.Rot = snapshot.Rot;
+
+                if (snapshot.Coord.room != _ghostWorldCoords.room ||
                     _player.pos.room != _playerWorldCoords.room) {
-                    MoveGhostSpriteToRoom(ghostWorldCoords);
+                    MoveGhostSpriteToRoom(snapshot.Coord);
                 }
             }
         }
 
         private static void WriteRecording() {
+            if (_writer == null) {
+                Debug.LogWarning("Attempting to write to file after writer is disposed");
+                return;
+            }
+
             var worldCoord = _player.realizedCreature.coord.SaveToString();
             var chunkPos = _player.realizedCreature.mainBodyChunk.pos;
             var chunkRot = _player.realizedCreature.mainBodyChunk.Rotation;
-            _writer.WriteLine($"{worldCoord}|{chunkPos.x},{chunkPos.y}|{chunkRot.x},{chunkRot.y}");
+            var time = GetSessionTime();
+            _writer.WriteLine($"{time}|{worldCoord}|{chunkPos.x},{chunkPos.y}|{chunkRot.x},{chunkRot.y}");
+        }
+
+        private static float GetSessionTime() {
+            return Time.time - _sessionStartTime;
         }
 
         private static void MoveGhostSpriteToRoom(WorldCoordinate ghostWorldCoordinate) {
@@ -156,11 +186,14 @@ namespace ReplayGhostMod {
             _playerWorldCoords = _player.pos;
         }
 
-        private static void Read(string line, out WorldCoordinate c, out Vector2 p, out Vector2 r) {
+        private static Snapshot ReadSnapshot(string line) {
+            Snapshot s = new Snapshot();
             var parts = line.Split(new[] {"|"}, StringSplitOptions.RemoveEmptyEntries);
-            c = WorldCoordinate.FromString(parts[0]);
-            p = ReadVector2(parts[1]);
-            r = ReadVector2(parts[2]);
+            s.Time = float.Parse(parts[0]);
+            s.Coord = WorldCoordinate.FromString(parts[1]);
+            s.Pos = ReadVector2(parts[2]);
+            s.Rot = ReadVector2(parts[3]);
+            return s;
         }
 
         private static Vector2 ReadVector2(string line) {
@@ -175,6 +208,22 @@ namespace ReplayGhostMod {
         private static string GetNewReplayFileName() {
             DateTime now = DateTime.Now;
             return $"Replay_{now.Day}-{now.Month}-{now.Year}-{now.Hour}-{now.Minute}-{now.Ticks}.txt";
+        }
+    }
+
+    public struct Snapshot {
+        public float Time;
+        public WorldCoordinate Coord;
+        public Vector2 Pos;
+        public Vector2 Rot;
+
+        public static Snapshot Interpolate(Snapshot a, Snapshot b, float lerp) {
+            Snapshot s =  new Snapshot();
+            s.Time = Mathf.Lerp(a.Time, b.Time, lerp);
+            s.Coord = lerp < 0.5 ? a.Coord : b.Coord; // This sucks, and it's going to show
+            s.Pos = Vector3.Lerp(a.Pos, b.Pos, lerp);
+            s.Rot = Vector3.Slerp(a.Rot, b.Rot, lerp);
+            return s;
         }
     }
 }
