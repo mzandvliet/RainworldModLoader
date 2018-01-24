@@ -4,6 +4,10 @@ using System.Reflection;
 using Harmony;
 using UnityEngine;
 
+/* Todo:
+ * - _currentGhostRoom.BlinkShortCut();
+ */
+
 namespace ReplayGhostMod {
     /// <summary>
     /// Replay Ghost Mod, by mzandvliet
@@ -20,6 +24,10 @@ namespace ReplayGhostMod {
         private static TextWriter _reader;
 
         private static StreamReader _replay;
+
+        private static WorldCoordinate _ghostWorldCoords;
+        private static WorldCoordinate _playerWorldCoords;
+        private static Room _currentGhostRoom;
 
         public static void Initialize() {
             PatchHooks();
@@ -61,8 +69,6 @@ namespace ReplayGhostMod {
              */
 
             _ghost = new ReplayGhost();
-            _ghostGraphics = new ReplayGhostGraphics(_ghost);
-            _player.Room.realizedRoom.AddObject(_ghostGraphics);
         }
 
         //private void ExitGame(bool asDeath, bool asQuit)
@@ -79,16 +85,52 @@ namespace ReplayGhostMod {
             var worldCoord = _player.realizedCreature.coord.SaveToString();
             var chunkPos = _player.realizedCreature.mainBodyChunk.pos;
 
+            // Todo: room change for ghost and player are correct, yet sprites don't get cleaned up!
+
             if (!_replay.EndOfStream) {
                 string line = _replay.ReadLine();
+                var ghostWorldCoords = ReadWorldCoord(line);
+                if (ghostWorldCoords.room != _ghostWorldCoords.room) {
+                    Debug.Log("Ghost moved! prev room: " + (_currentGhostRoom != null));
+                    UpdateTo(ghostWorldCoords);
+                }
+
+                if (_player.pos.room != _playerWorldCoords.room) {
+                    Debug.Log("Player moved! prev room: " + (_currentGhostRoom != null));
+                    UpdateTo(ghostWorldCoords);
+                }
+
                 _ghost.Pos = ReadPosition(line);
             }
 
             _writer.WriteLine($"{worldCoord}, ({chunkPos.x}, {chunkPos.y})");
         }
 
+        private static void UpdateTo(WorldCoordinate ghostWorldCoordinate) {
+            if (_ghostGraphics != null) {
+                // Todo: why doesn't this work?
+                _ghostGraphics.Destroy();
+                _player.world.GetAbstractRoom(_ghostWorldCoords.room).realizedRoom.RemoveObject(_ghostGraphics);
+            }
+
+            Room activeRoom = _player.world.GetAbstractRoom(ghostWorldCoordinate.room).realizedRoom;
+            if (activeRoom != null) {
+                _ghostGraphics = new ReplayGhostGraphics(_ghost);
+                activeRoom.AddObject(_ghostGraphics);
+            }
+
+            _ghostWorldCoords = ghostWorldCoordinate;
+            _playerWorldCoords = _player.pos;
+        }
+
+        private static WorldCoordinate ReadWorldCoord(string line) {
+            var parts = line.Split(new[] {","}, StringSplitOptions.RemoveEmptyEntries);
+            var c = WorldCoordinate.FromString(parts[0]);
+            return c;
+        }
+
         private static Vector2 ReadPosition(string line) {
-            var parts = line.Split(new [] {"", "(", ",", ")"}, StringSplitOptions.RemoveEmptyEntries);
+            var parts = line.Split(new [] {"(", ",", ")"}, StringSplitOptions.RemoveEmptyEntries);
             var v = new Vector2(
                 float.Parse(parts[parts.Length - 2]),
                 float.Parse(parts[parts.Length - 1]));
