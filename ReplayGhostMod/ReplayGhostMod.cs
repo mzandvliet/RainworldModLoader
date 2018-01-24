@@ -2,20 +2,18 @@
 using System.IO;
 using System.Reflection;
 using Harmony;
-using RWCustom;
 using UnityEngine;
 
 /* Todo:
- * - Instead of storing complete state every frame, store changes
- *      - this way you only log room on room change, and so on :)
- *      - how to reason about interpolating snapshots?
- *          - you can't interpolate a room change! I mean, classically.
+ * - Multiple runs within a single launch of the game don't work, it just records the first.
+ * - Shortcuts still strip the system up
  * - let user select run
- * - investigate frame timing. (we should probably timestamp and interpolate, instead of playing
- * back raw frames)
  * 
- * Interpolating looks bad. Not only do WoorldCoords not interpolate, but now shortcuts appear
- * messed up.
+ * Problem: if player room change triggers a sprite move, position of sprite in new room
+ * seems to still be position from previous room. Why?
+ * 
+ * One problem: ghost exit pipe happens N after room change, or might never happen
+ * 
  * 
  * - It'd be nice to see the ghost using shortcuts, with correct color
  * _currentGhostRoom.BlinkShortCut();
@@ -26,17 +24,6 @@ using UnityEngine;
  * - Implement the wait-for-player-to-catch-up mechanic, showing the splits
  * - Record and render more slugcat state
  * 
- * When exiting game from pause menu:
-ObjectDisposedException: The object was used after being disposed.
-System.IO.StreamWriter.Write (string) <IL 0x00015, 0x0005c>
-System.IO.TextWriter.WriteLine (string) <IL 0x00002, 0x0002d>
-ReplayGhostMod.ReplayGhostMod.WriteRecording () <IL 0x0017e, 0x0078f>
-ReplayGhostMod.ReplayGhostMod.RainWorldGame_Update_Post (RainWorldGame) <IL 0x00022, 0x000da>
-(wrapper dynamic-method) RainWorldGame.Update_Patch1 (object) <IL 0x0058d, 0x01354>
-MainLoopProcess.RawUpdate (single) <IL 0x00027, 0x00081>
-RainWorldGame.RawUpdate (single) <IL 0x00611, 0x01757>
-ProcessManager.Update (single) <IL 0x00037, 0x000cc>
-RainWorld.Update () <IL 0x0000b, 0x0003f>
  */
 
 
@@ -63,8 +50,10 @@ namespace ReplayGhostMod {
 
         private static float _readerTime;
 
-        private static GhostState _last;
-        private static GhostState _current;
+        private static GhostState _lastGhostSnapshot;
+        private static GhostState _currentGhostSnapshot;
+
+        private static bool _ghostInPipe;
 
         public static void Initialize() {
             PatchHooks();
@@ -102,8 +91,6 @@ namespace ReplayGhostMod {
             _ghostGraphics = new ReplayGhostGraphics(_ghost);
         }
 
-        
-
         //private void ExitGame(bool asDeath, bool asQuit)
         public static void RainWorldGame_ExitGame_Pre(RainWorldGame __instance, bool asDeath, bool asQuit) {
             _ghostGraphics.Destroy();
@@ -139,42 +126,59 @@ namespace ReplayGhostMod {
         private static void ReadRecording() {
             if (_replay != null && !_replay.EndOfStream) {
 
-                while (!_replay.EndOfStream && _readerTime < GetSessionTime()) {
+                bool done = false;
+                while (!_replay.EndOfStream && !done && _readerTime < GetSessionTime()) {
                     string line = _replay.ReadLine();
-                    Parse(line);
+                    done = Parse(line);
                 }
 
                 if (_player.pos.room != _lastPlayerRoom) {
-                    MoveGhostSpriteToRoom(_player.pos.room);
+                    // Todo: I guess not need if already in the right room
+                    MoveGhostSpriteToRoom(_ghostRoom);
                 }
             }
+
+            // Interpolate on-screen ghost state based on last two read values
+            float lerp = (GetSessionTime() - _lastGhostSnapshot.Time) / (_currentGhostSnapshot.Time - _lastGhostSnapshot.Time);
+            GhostState renderState = GhostState.Lerp(_lastGhostSnapshot, _currentGhostSnapshot, lerp);
+            _ghost.Pos = renderState.Pos;
+            _ghost.Rot = renderState.Rot;
         }
 
-        private static void Parse(string line) {
+        private static bool Parse(string line) {
             var parts = line.Split(new[] { ":", "|", "," }, StringSplitOptions.RemoveEmptyEntries);
 
             _readerTime = float.Parse(parts[1]);
 
             string type = parts[0];
             if (type == "i") {
-                OnEnterShortcut();
+                OnGhostEnterShortcut();
+                return false;
             }
-            else if (type == "o") {
-                OnExitShortcut();
-            }
-            else if (type == "r") {
-                int room = int.Parse(parts[2]);
-                OnRoomChange(room);
-            }
-            else if (type == "t") {
-                
+            if (type == "o") {
                 var state = new GhostState() {
                     Time = _readerTime,
                     Pos = ReadVector2(parts[2], parts[3]),
                     Rot = ReadVector2(parts[4], parts[5])
                 };
-                OnTransformUpdate(state);
+                OnGhostExitShortcut(state);
+                return false;
             }
+            if (type == "r") {
+                int room = int.Parse(parts[2]);
+                OnGhostRoomChange(room);
+                return false;
+            }
+            if (type == "t") {
+                var state = new GhostState() {
+                    Time = _readerTime,
+                    Pos = ReadVector2(parts[2], parts[3]),
+                    Rot = ReadVector2(parts[4], parts[5])
+                };
+                OnGhostTransformUpdate(state);
+                return true;
+            }
+            return true;
         }
 
         private static Vector2 ReadVector2(string x, string y) {
@@ -184,42 +188,50 @@ namespace ReplayGhostMod {
             return v;
         }
 
-        private static void OnEnterShortcut() {
-            RemoveSpriteFromRoom(_ghostRoom);
+        private static void ClearGhostInterpolationState() {
+            _lastGhostSnapshot.Pos = _currentGhostSnapshot.Pos;
+            _lastGhostSnapshot.Rot = _currentGhostSnapshot.Rot;
+            // Note: not for time, would cause div-by-zero in interpolation
         }
 
-        private static void OnExitShortcut() {
-            AddSpriteToActiveRoom(_ghostRoom);
+        private static void OnGhostEnterShortcut() {
+            RemoveGhostSpriteFromRoom(_ghostRoom);
+            _ghostInPipe = true;
         }
 
-        private static void OnRoomChange(int room) {
+        private static void OnGhostExitShortcut(GhostState state) {
+            AddGhostSpriteToActiveRoom(_ghostRoom);
+            _currentGhostSnapshot = state;
+            ClearGhostInterpolationState();
+            _ghostInPipe = false;
+        }
+
+        private static void OnGhostRoomChange(int room) {
             MoveGhostSpriteToRoom(room);
         }
 
-        private static void OnTransformUpdate(GhostState state) {
-            _last = _current;
-            _current = state;
-
-            float lerp = (GetSessionTime() - _last.Time) / (_current.Time - _last.Time);
-            GhostState renderState = GhostState.Lerp(_last, _current, lerp);
-
-            _ghost.Pos = renderState.Pos;
-            _ghost.Rot = renderState.Rot;
+        private static void OnGhostTransformUpdate(GhostState state) {
+            _lastGhostSnapshot = _currentGhostSnapshot;
+            _currentGhostSnapshot = state;
         }
 
         private static void MoveGhostSpriteToRoom(int room) {
-            RemoveSpriteFromRoom(_ghostRoom);
-            AddSpriteToActiveRoom(room);
+            if (!_ghostInPipe) {
+                RemoveGhostSpriteFromRoom(_ghostRoom);
+                AddGhostSpriteToActiveRoom(room);
+            }
+            
             _ghostRoom = room;
+            ClearGhostInterpolationState();
         }
 
-        private static void AddSpriteToActiveRoom(int room) {
+        private static void AddGhostSpriteToActiveRoom(int room) {
             AbstractRoom absRoom = _player.world.GetAbstractRoom(room);
             Room activeRoom = absRoom?.realizedRoom;
             activeRoom?.AddObject(_ghostGraphics);
         }
 
-        private static void RemoveSpriteFromRoom(int room) {
+        private static void RemoveGhostSpriteFromRoom(int room) {
             AbstractRoom absRoom = _player.world.GetAbstractRoom(room);
             Room activeRoom = absRoom?.realizedRoom;
             activeRoom?.RemoveObject(_ghostGraphics);
@@ -238,6 +250,8 @@ namespace ReplayGhostMod {
             }
 
             var time = GetSessionTime();
+            var chunkPos = _player.realizedCreature.mainBodyChunk.pos;
+            var chunkRot = _player.realizedCreature.mainBodyChunk.Rotation;
 
             // Handle shortcut entering, exiting
             bool inShortcut = _player.realizedCreature.inShortcut;
@@ -245,7 +259,7 @@ namespace ReplayGhostMod {
                 _writer.WriteLine($"i:{time}");
             }
             else if (!inShortcut && _playerWasInShortcut) {
-                _writer.WriteLine($"o:{time}");
+                _writer.WriteLine($"o:{time}||{chunkPos.x},{chunkPos.y}|{chunkRot.x},{chunkRot.y}");
             }
             _playerWasInShortcut = inShortcut;
 
@@ -257,10 +271,7 @@ namespace ReplayGhostMod {
             }
 
             // Handle transform updates
-            if (!inShortcut) {
-                var chunkPos = _player.realizedCreature.mainBodyChunk.pos;
-                var chunkRot = _player.realizedCreature.mainBodyChunk.Rotation;
-                
+            if (Time.frameCount % 4 == 0) {
                 _writer.WriteLine($"t:{time}|{chunkPos.x},{chunkPos.y}|{chunkRot.x},{chunkRot.y}");
             }
         }
