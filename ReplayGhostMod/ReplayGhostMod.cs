@@ -13,26 +13,29 @@ using UnityEngine;
  * - investigate frame timing. (we should probably timestamp and interpolate, instead of playing
  * back raw frames)
  * 
+ * Interpolating looks bad. Not only do WoorldCoords not interpolate, but now shortcuts appear
+ * messed up.
+ * 
  * - It'd be nice to see the ghost using shortcuts, with correct color
  * _currentGhostRoom.BlinkShortCut();
  * - Could we still use abstractphysicalobject, and set its collision flags and such to false?
+ *     - http://rain-world-modding.wikia.com/wiki/Adding_a_Custom_Creature
+ *     - means we could make easy use of features like shortcuts
  * - Show the split times
  * - Implement the wait-for-player-to-catch-up mechanic, showing the splits
  * - Record and render more slugcat state
  * 
- * 
+ * When exiting game from pause menu:
 ObjectDisposedException: The object was used after being disposed.
 System.IO.StreamWriter.Write (string) <IL 0x00015, 0x0005c>
 System.IO.TextWriter.WriteLine (string) <IL 0x00002, 0x0002d>
-ReplayGhostMod.ReplayGhostMod.UpdateRecording () <IL 0x00094, 0x003de>
-ReplayGhostMod.ReplayGhostMod.RainWorldGame_Update_Post (RainWorldGame) <IL 0x00022, 0x000d7>
+ReplayGhostMod.ReplayGhostMod.WriteRecording () <IL 0x0017e, 0x0078f>
+ReplayGhostMod.ReplayGhostMod.RainWorldGame_Update_Post (RainWorldGame) <IL 0x00022, 0x000da>
 (wrapper dynamic-method) RainWorldGame.Update_Patch1 (object) <IL 0x0058d, 0x01354>
 MainLoopProcess.RawUpdate (single) <IL 0x00027, 0x00081>
 RainWorldGame.RawUpdate (single) <IL 0x00611, 0x01757>
 ProcessManager.Update (single) <IL 0x00037, 0x000cc>
 RainWorld.Update () <IL 0x0000b, 0x0003f>
-
-    game start time, game current time... I guess Time.time?
  */
 
 
@@ -53,14 +56,13 @@ namespace ReplayGhostMod {
         private static TextWriter _writer;
         private static StreamReader _replay;
 
-        private static WorldCoordinate _ghostWorldCoords;
-        private static WorldCoordinate _playerWorldCoords;
-
-        private static Snapshot _last;
-        private static Snapshot _current;
-
+        private static int _ghostRoom;
+        private static int _lastPlayerRoom;
 
         private static float _sessionStartTime;
+        private static bool _playerWasInShortcut;
+
+        private static float _lastReaderTime;
 
         public static void Initialize() {
             PatchHooks();
@@ -89,19 +91,39 @@ namespace ReplayGhostMod {
                 Directory.CreateDirectory(RecordingFolder);
             }
             
-            LoadReplay();
+            LoadRecording();
             StartRecording();
 
             _sessionStartTime = Time.time;
 
             _ghost = new ReplayGhost();
+            _ghostGraphics = new ReplayGhostGraphics(_ghost);
         }
 
-        private static void StartRecording() {
-            _writer = new StreamWriter(Path.Combine(RecordingFolder, GetNewReplayFileName()), false);
+        
+
+        //private void ExitGame(bool asDeath, bool asQuit)
+        public static void RainWorldGame_ExitGame_Pre(RainWorldGame __instance, bool asDeath, bool asQuit) {
+            _ghostGraphics.Destroy();
+
+            _writer.WriteLine($"f={GetSessionTime()}");
+            _writer.Close();
+            _writer.Dispose();
+            _writer = null;
         }
 
-        private static void LoadReplay() {
+        public static void RainWorldGame_Update_Post(RainWorldGame __instance) {
+            if (_player?.realizedCreature == null) {
+                return;
+            }
+
+            ReadRecording();
+            WriteRecording();
+
+            _lastPlayerRoom = _player.pos.room;
+        }
+
+        private static void LoadRecording() {
             var replays = Directory.GetFiles(RecordingFolder);
             if (replays.Length == 0) {
                 Debug.Log("No recorded runs available");
@@ -112,45 +134,89 @@ namespace ReplayGhostMod {
             _replay = File.OpenText(replay);
         }
 
-        //private void ExitGame(bool asDeath, bool asQuit)
-        public static void RainWorldGame_ExitGame_Pre(RainWorldGame __instance, bool asDeath, bool asQuit) {
-            _writer.WriteLine($"time={Time.time-_sessionStartTime} seconds");
-
-            _writer.Close();
-        }
-
-        public static void RainWorldGame_Update_Post(RainWorldGame __instance) {
-            if (_player?.realizedCreature == null) {
-                return;
-            }
-
-            ReadRecording();
-
-            if (Time.frameCount % 10 == 0) {
-                WriteRecording();
-            }
-        }
-
         private static void ReadRecording() {
             if (_replay != null && !_replay.EndOfStream) {
 
-                if (GetSessionTime() > _current.Time) {
+                while (!_replay.EndOfStream && _lastReaderTime < GetSessionTime()) {
                     string line = _replay.ReadLine();
-                    _last = _current;
-                    _current = ReadSnapshot(line);
+                    Parse(line);
                 }
 
-                float lerp = Mathf.Clamp01((GetSessionTime() - _last.Time) / (_current.Time - _last.Time));
-                Snapshot snapshot = Snapshot.Interpolate(_last, _current, lerp);
-
-                _ghost.Pos = snapshot.Pos;
-                _ghost.Rot = snapshot.Rot;
-
-                if (snapshot.Coord.room != _ghostWorldCoords.room ||
-                    _player.pos.room != _playerWorldCoords.room) {
-                    MoveGhostSpriteToRoom(snapshot.Coord);
+                if (_player.pos.room != _lastPlayerRoom) {
+                    MoveGhostSpriteToRoom(_player.pos.room);
                 }
             }
+        }
+
+        private static void Parse(string line) {
+            var parts = line.Split(new[] { ":", "|", "," }, StringSplitOptions.RemoveEmptyEntries);
+
+            string type = parts[0];
+            if (type == "i") {
+                OnEnterShortcut();
+            }
+            else if (type == "o") {
+                OnExitShortcut();
+            }
+            else if (type == "r") {
+                int room = int.Parse(parts[1]);
+                OnRoomChange(room);
+            }
+            else if (type == "t") {
+                _lastReaderTime = float.Parse(parts[1]);
+                var pos = ReadVector2(parts[2], parts[3]);
+                var rot = ReadVector2(parts[4], parts[5]);
+                OnTransformUpdate(pos, rot);
+            }
+        }
+
+        private static Vector2 ReadVector2(string x, string y) {
+            var v = new Vector2(
+                float.Parse(x),
+                float.Parse(y));
+            return v;
+        }
+
+        private static void OnEnterShortcut() {
+            RemoveSprite();
+        }
+
+        private static void OnExitShortcut() {
+            AddSpriteToActiveRoom(_ghostRoom);
+        }
+
+        private static void OnRoomChange(int room) {
+            MoveGhostSpriteToRoom(room);
+        }
+
+        private static void OnTransformUpdate(Vector2 pos, Vector2 rot) {
+            _ghost.Pos = pos;
+            _ghost.Rot = rot;
+        }
+
+        private static void MoveGhostSpriteToRoom(int room) {
+            RemoveSprite();
+            AddSpriteToActiveRoom(room);
+            _ghostRoom = room;
+        }
+
+        private static void AddSpriteToActiveRoom(int room) {
+            Room activeRoom = _player.world.GetAbstractRoom(room).realizedRoom;
+            if (activeRoom != null) {
+                activeRoom.AddObject(_ghostGraphics);
+            }
+        }
+
+        private static void RemoveSprite() {
+            if (_ghostGraphics.room != null) {
+                _ghostGraphics.room.RemoveObject(_ghostGraphics);
+            }
+        }
+
+        #region Record
+
+        private static void StartRecording() {
+            _writer = new StreamWriter(Path.Combine(RecordingFolder, GetNewReplayFileName()), false);
         }
 
         private static void WriteRecording() {
@@ -159,71 +225,41 @@ namespace ReplayGhostMod {
                 return;
             }
 
-            var worldCoord = _player.realizedCreature.coord.SaveToString();
+            // Handle shortcut entering, exiting
+            bool inShortcut = _player.realizedCreature.inShortcut;
+            if (inShortcut && !_playerWasInShortcut) {
+                _writer.WriteLine($"i:{_player.realizedCreature.enteringShortCut}");
+            }
+            else if (!inShortcut && _playerWasInShortcut) {
+                _writer.WriteLine($"o:");
+            }
+            _playerWasInShortcut = inShortcut;
+
+
+            // Handle woorldcoord changes
+            if (_player.pos.room != _lastPlayerRoom) {
+                _writer.WriteLine($"r:{_player.pos.room}");
+                _lastPlayerRoom = _player.pos.room;
+            }
+
+            // Handle transform updates
             var chunkPos = _player.realizedCreature.mainBodyChunk.pos;
             var chunkRot = _player.realizedCreature.mainBodyChunk.Rotation;
             var time = GetSessionTime();
-            _writer.WriteLine($"{time}|{worldCoord}|{chunkPos.x},{chunkPos.y}|{chunkRot.x},{chunkRot.y}");
+            _writer.WriteLine($"t:{time}|{chunkPos.x},{chunkPos.y}|{chunkRot.x},{chunkRot.y}");
         }
 
         private static float GetSessionTime() {
             return Time.time - _sessionStartTime;
         }
 
-        private static void MoveGhostSpriteToRoom(WorldCoordinate ghostWorldCoordinate) {
-            if (_ghostGraphics != null) {
-                _ghostGraphics.Destroy();
-                _player.world.GetAbstractRoom(_ghostWorldCoords.room).realizedRoom.RemoveObject(_ghostGraphics);
-            }
-
-            Room activeRoom = _player.world.GetAbstractRoom(ghostWorldCoordinate.room).realizedRoom;
-            if (activeRoom != null) {
-                _ghostGraphics = new ReplayGhostGraphics(_ghost);
-                activeRoom.AddObject(_ghostGraphics);
-            }
-
-            _ghostWorldCoords = ghostWorldCoordinate;
-            _playerWorldCoords = _player.pos;
-        }
-
-        private static Snapshot ReadSnapshot(string line) {
-            Snapshot s = new Snapshot();
-            var parts = line.Split(new[] {"|"}, StringSplitOptions.RemoveEmptyEntries);
-            s.Time = float.Parse(parts[0]);
-            s.Coord = WorldCoordinate.FromString(parts[1]);
-            s.Pos = ReadVector2(parts[2]);
-            s.Rot = ReadVector2(parts[3]);
-            return s;
-        }
-
-        private static Vector2 ReadVector2(string line) {
-            var parts = line.Split(new [] {","}, StringSplitOptions.RemoveEmptyEntries);
-            var v = new Vector2(
-                float.Parse(parts[0]),
-                float.Parse(parts[1]));
-            return v;
-        }
-
-
         private static string GetNewReplayFileName() {
             DateTime now = DateTime.Now;
             return $"Replay_{now.Day}-{now.Month}-{now.Year}-{now.Hour}-{now.Minute}-{now.Ticks}.txt";
         }
-    }
 
-    public struct Snapshot {
-        public float Time;
-        public WorldCoordinate Coord;
-        public Vector2 Pos;
-        public Vector2 Rot;
+        #endregion
 
-        public static Snapshot Interpolate(Snapshot a, Snapshot b, float lerp) {
-            Snapshot s =  new Snapshot();
-            s.Time = Mathf.Lerp(a.Time, b.Time, lerp);
-            s.Coord = lerp < 0.5 ? a.Coord : b.Coord; // This sucks, and it's going to show
-            s.Pos = Vector3.Lerp(a.Pos, b.Pos, lerp);
-            s.Rot = Vector3.Slerp(a.Rot, b.Rot, lerp);
-            return s;
-        }
+
     }
 }
