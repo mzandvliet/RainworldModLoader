@@ -2,6 +2,7 @@
 using System.IO;
 using System.Reflection;
 using Harmony;
+using RWCustom;
 using UnityEngine;
 
 /* Todo:
@@ -45,9 +46,7 @@ namespace ReplayGhostMod {
     /// Replay Ghost Mod, by mzandvliet
     /// </summary>
     public static class ReplayGhostMod {
-        // Todo: LOCAL PATH
-        private const string RecordingFolder =
-            "D:\\Games\\SteamLibrary\\steamapps\\common\\Rain World\\Mods\\ReplayGhostMod\\Replays";
+        private const string RecordingFolder = "Mods\\ReplayGhostMod\\Replays";
 
         private static AbstractCreature _player;
         private static ReplayGhost _ghost;
@@ -62,7 +61,10 @@ namespace ReplayGhostMod {
         private static float _sessionStartTime;
         private static bool _playerWasInShortcut;
 
-        private static float _lastReaderTime;
+        private static float _readerTime;
+
+        private static GhostState _last;
+        private static GhostState _current;
 
         public static void Initialize() {
             PatchHooks();
@@ -137,7 +139,7 @@ namespace ReplayGhostMod {
         private static void ReadRecording() {
             if (_replay != null && !_replay.EndOfStream) {
 
-                while (!_replay.EndOfStream && _lastReaderTime < GetSessionTime()) {
+                while (!_replay.EndOfStream && _readerTime < GetSessionTime()) {
                     string line = _replay.ReadLine();
                     Parse(line);
                 }
@@ -151,6 +153,8 @@ namespace ReplayGhostMod {
         private static void Parse(string line) {
             var parts = line.Split(new[] { ":", "|", "," }, StringSplitOptions.RemoveEmptyEntries);
 
+            _readerTime = float.Parse(parts[1]);
+
             string type = parts[0];
             if (type == "i") {
                 OnEnterShortcut();
@@ -159,14 +163,17 @@ namespace ReplayGhostMod {
                 OnExitShortcut();
             }
             else if (type == "r") {
-                int room = int.Parse(parts[1]);
+                int room = int.Parse(parts[2]);
                 OnRoomChange(room);
             }
             else if (type == "t") {
-                _lastReaderTime = float.Parse(parts[1]);
-                var pos = ReadVector2(parts[2], parts[3]);
-                var rot = ReadVector2(parts[4], parts[5]);
-                OnTransformUpdate(pos, rot);
+                
+                var state = new GhostState() {
+                    Time = _readerTime,
+                    Pos = ReadVector2(parts[2], parts[3]),
+                    Rot = ReadVector2(parts[4], parts[5])
+                };
+                OnTransformUpdate(state);
             }
         }
 
@@ -178,7 +185,7 @@ namespace ReplayGhostMod {
         }
 
         private static void OnEnterShortcut() {
-            RemoveSprite();
+            RemoveSpriteFromRoom(_ghostRoom);
         }
 
         private static void OnExitShortcut() {
@@ -189,28 +196,33 @@ namespace ReplayGhostMod {
             MoveGhostSpriteToRoom(room);
         }
 
-        private static void OnTransformUpdate(Vector2 pos, Vector2 rot) {
-            _ghost.Pos = pos;
-            _ghost.Rot = rot;
+        private static void OnTransformUpdate(GhostState state) {
+            _last = _current;
+            _current = state;
+
+            float lerp = (GetSessionTime() - _last.Time) / (_current.Time - _last.Time);
+            GhostState renderState = GhostState.Lerp(_last, _current, lerp);
+
+            _ghost.Pos = renderState.Pos;
+            _ghost.Rot = renderState.Rot;
         }
 
         private static void MoveGhostSpriteToRoom(int room) {
-            RemoveSprite();
+            RemoveSpriteFromRoom(_ghostRoom);
             AddSpriteToActiveRoom(room);
             _ghostRoom = room;
         }
 
         private static void AddSpriteToActiveRoom(int room) {
-            Room activeRoom = _player.world.GetAbstractRoom(room).realizedRoom;
-            if (activeRoom != null) {
-                activeRoom.AddObject(_ghostGraphics);
-            }
+            AbstractRoom absRoom = _player.world.GetAbstractRoom(room);
+            Room activeRoom = absRoom?.realizedRoom;
+            activeRoom?.AddObject(_ghostGraphics);
         }
 
-        private static void RemoveSprite() {
-            if (_ghostGraphics.room != null) {
-                _ghostGraphics.room.RemoveObject(_ghostGraphics);
-            }
+        private static void RemoveSpriteFromRoom(int room) {
+            AbstractRoom absRoom = _player.world.GetAbstractRoom(room);
+            Room activeRoom = absRoom?.realizedRoom;
+            activeRoom?.RemoveObject(_ghostGraphics);
         }
 
         #region Record
@@ -225,28 +237,32 @@ namespace ReplayGhostMod {
                 return;
             }
 
+            var time = GetSessionTime();
+
             // Handle shortcut entering, exiting
             bool inShortcut = _player.realizedCreature.inShortcut;
             if (inShortcut && !_playerWasInShortcut) {
-                _writer.WriteLine($"i:{_player.realizedCreature.enteringShortCut}");
+                _writer.WriteLine($"i:{time}");
             }
             else if (!inShortcut && _playerWasInShortcut) {
-                _writer.WriteLine($"o:");
+                _writer.WriteLine($"o:{time}");
             }
             _playerWasInShortcut = inShortcut;
 
 
             // Handle woorldcoord changes
             if (_player.pos.room != _lastPlayerRoom) {
-                _writer.WriteLine($"r:{_player.pos.room}");
+                _writer.WriteLine($"r:{time}|{_player.pos.room}");
                 _lastPlayerRoom = _player.pos.room;
             }
 
             // Handle transform updates
-            var chunkPos = _player.realizedCreature.mainBodyChunk.pos;
-            var chunkRot = _player.realizedCreature.mainBodyChunk.Rotation;
-            var time = GetSessionTime();
-            _writer.WriteLine($"t:{time}|{chunkPos.x},{chunkPos.y}|{chunkRot.x},{chunkRot.y}");
+            if (!inShortcut) {
+                var chunkPos = _player.realizedCreature.mainBodyChunk.pos;
+                var chunkRot = _player.realizedCreature.mainBodyChunk.Rotation;
+                
+                _writer.WriteLine($"t:{time}|{chunkPos.x},{chunkPos.y}|{chunkRot.x},{chunkRot.y}");
+            }
         }
 
         private static float GetSessionTime() {
@@ -260,6 +276,18 @@ namespace ReplayGhostMod {
 
         #endregion
 
+        public struct GhostState {
+            public float Time;
+            public Vector2 Pos;
+            public Vector2 Rot;
 
+            public static GhostState Lerp(GhostState a, GhostState b, float lerp) {
+                return new GhostState() {
+                    Time = Mathf.Lerp(a.Time, b.Time, lerp),
+                    Pos = Vector2.Lerp(a.Pos, b.Pos, lerp),
+                    Rot = Vector3.Slerp(a.Rot, b.Rot, lerp)
+                };
+            }
+        }
     }
 }
