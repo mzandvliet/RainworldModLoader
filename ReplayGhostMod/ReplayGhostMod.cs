@@ -7,8 +7,11 @@ using UnityEngine;
 /* Todo:
  * - game crashes on exit, see exception below
  * - select PB run, or let user select run
+ * - investigate frame timing. (we should probably timestamp and interpolate, instead of playing
+ * back raw frames)
  * 
- * - It'd be nice to see the ghost using shortcuts, with correct color, _currentGhostRoom.BlinkShortCut();
+ * - It'd be nice to see the ghost using shortcuts, with correct color
+ * _currentGhostRoom.BlinkShortCut();
  * - Could we still use abstractphysicalobject, and set its collision flags and such to false?
  * - Show the split times
  * - Implement the wait-for-player-to-catch-up mechanic, showing the splits
@@ -34,6 +37,7 @@ namespace ReplayGhostMod {
     /// Replay Ghost Mod, by mzandvliet
     /// </summary>
     public static class ReplayGhostMod {
+        // Todo: LOCAL PATH
         private const string RecordingFolder =
             "D:\\Games\\SteamLibrary\\steamapps\\common\\Rain World\\Mods\\ReplayGhostMod\\Replays";
 
@@ -106,11 +110,11 @@ namespace ReplayGhostMod {
                 return;
             }
 
-            UpdatePlayback();
-            UpdateRecording();
+            ReadRecording();
+            WriteRecording();
         }
 
-        private static void UpdatePlayback() {
+        private static void ReadRecording() {
             if (_replay != null && !_replay.EndOfStream) { 
                 string line = _replay.ReadLine();
 
@@ -122,17 +126,14 @@ namespace ReplayGhostMod {
                 _ghost.Pos = ghostPos;
                 _ghost.Rot = ghostRot;
 
-                if (ghostWorldCoords.room != _ghostWorldCoords.room) {
-                    MoveGhostSpriteToRoom(ghostWorldCoords);
-                }
-
-                if (_player.pos.room != _playerWorldCoords.room) {
+                if (ghostWorldCoords.room != _ghostWorldCoords.room ||
+                    _player.pos.room != _playerWorldCoords.room) {
                     MoveGhostSpriteToRoom(ghostWorldCoords);
                 }
             }
         }
 
-        private static void UpdateRecording() {
+        private static void WriteRecording() {
             var worldCoord = _player.realizedCreature.coord.SaveToString();
             var chunkPos = _player.realizedCreature.mainBodyChunk.pos;
             var chunkRot = _player.realizedCreature.mainBodyChunk.Rotation;
