@@ -82,10 +82,23 @@ namespace ReplayGhostMod {
                 return;
             }
 
-            var worldCoord = _player.realizedCreature.coord.SaveToString();
-            var chunkPos = _player.realizedCreature.mainBodyChunk.pos;
+//            if (Time.frameCount % 60 == 0) {
+//                if (_ghostGraphics != null) {
+//                    _player.world.GetAbstractRoom(_ghostWorldCoords.room).realizedRoom.RemoveObject(_ghostGraphics);
+//                }
+//                else {
+//                    _ghost.Pos = _player.realizedCreature.mainBodyChunk.pos;
+//                    Room activeRoom = _player.world.GetAbstractRoom(_player.pos.room).realizedRoom;
+//                    _ghostGraphics = new ReplayGhostGraphics(_ghost);
+//                    activeRoom.AddObject(_ghostGraphics);
+//                }
+//            }
+
 
             // Todo: room change for ghost and player are correct, yet sprites don't get cleaned up!
+
+            var worldCoord = _player.realizedCreature.coord.SaveToString();
+            var chunkPos = _player.realizedCreature.mainBodyChunk.pos;
 
             if (!_replay.EndOfStream) {
                 string line = _replay.ReadLine();
@@ -94,15 +107,15 @@ namespace ReplayGhostMod {
                     Debug.Log("Ghost moved! prev room: " + (_currentGhostRoom != null));
                     UpdateTo(ghostWorldCoords);
                 }
-
+            
                 if (_player.pos.room != _playerWorldCoords.room) {
                     Debug.Log("Player moved! prev room: " + (_currentGhostRoom != null));
                     UpdateTo(ghostWorldCoords);
                 }
-
+            
                 _ghost.Pos = ReadPosition(line);
             }
-
+            
             _writer.WriteLine($"{worldCoord}, ({chunkPos.x}, {chunkPos.y})");
         }
 
