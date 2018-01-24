@@ -5,8 +5,8 @@ using Harmony;
 using UnityEngine;
 
 /* Todo:
+ * - On new game, there is desynch because start time behaves differently from shelter load (cinematic or fade-in, probably)
  * - Multiple runs within a single launch of the game don't work, it just records the first.
- * - Shortcuts still strip the system up
  * - let user select run
  * 
  * Problem: if player room change triggers a sprite move, position of sprite in new room
