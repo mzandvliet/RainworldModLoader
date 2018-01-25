@@ -3,7 +3,7 @@
 (Example: Slugcat Camo Mod by LodeRunner + Co-op Mod by OriginalSINe, both running through this mod loader. Check out [RainDB.net](http://www.raindb.net) for more released mods, which may some day be made compatible with this loader.)
 
 # RainworldModLoader
-Proof of concept Rainworld Mod Loader, almost at a state of being very useful.
+Proof of concept Rainworld Mod Loader, almost at a state of being useful.
 
 If you are a mod developer, please do get in touch and provide feedback! I'm on the [Rainworld Discord](https://discordapp.com/invite/SBmHbpW) in #modding.
 
@@ -63,3 +63,11 @@ Three big wins:
 - The game can load multiple mods at once. (Providing they don't conflict, which requires some developer care. The modding API can't guarantee that any two mods go well together, but their developers can.)
 - You can write your code in visual studio, in C#, organize it into separate DLLs, have dependencies, use source control, and so on.
 - Mods and modding APIs don't need to redistribute copyrighted code in Assembly-CSharp, but can be locally applied as a patch to your game install with an easy to use patching program. The Hollow Knight modding community has [encountered and discussed this issue](https://gist.github.com/thejoshwolfe/db369bebf6518227c830fffee12ddbec), leading to a similar approach.
+
+# Known Issues & Todo
+
+- Distributing the modloader and mods is not that easy. Haven't worked on this yet because there's other things to sort out first.
+- As soon as Harmony is used to patch the game's assembly at runtime, dnSpy's debugger can no longer respond to break points set in any patched methods. This is counterproductive, and a serious argument in favour of offline patching instead of runtime patching.
+- Having no mod API whatsoever and relying entirely on Harmony for creating your mod is not great. Should identify some common modding patterns (e.g. adding a new creature) and create easy to use infrastructure for this.
+
+
