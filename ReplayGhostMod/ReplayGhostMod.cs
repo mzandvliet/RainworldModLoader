@@ -6,15 +6,11 @@ using UnityEngine;
 
 /* Todo:
  * - On new game, there is desynch because start time behaves differently from shelter load (cinematic or fade-in, probably)
- * - Everything is ok into region gates, but after that and shelter it stops working.
+ * - Everything is ok into region gates, but after that and possibly a shelter it stops working.
  * - Game exit from menu creates new replay file?
  * - Multiple runs within a single launch of the game don't work, it just records the first.
  * - let user select run (separate recording / playback folders)
  * 
- * Problem: if player room change triggers a sprite move, position of sprite in new room
- * seems to still be position from previous room. Why?
- * 
- * One problem: ghost exit pipe happens N after room change, or might never happen
  * 
  * 
  * - It'd be nice to see the ghost using shortcuts, with correct color
