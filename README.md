@@ -40,6 +40,8 @@ I've tried getting VS2017's debugging tools to work with the game, but haven't m
 
 The mod loader also automatically enables logging to consoleLog.txt and exceptionLog.txt, so all your Debug.Log, Debug.LogWarning and Debug.LogError calls ends up there.
 
+Note: There is a caveat to using a debugger due to Harmony, see Known Issues.
+
 # Why?
 
 The existing approach to modding Rainworld is to load the game's dotnet assembly using a tool called [dnSpy](https://github.com/0xd4d/dnSpy/), which lets you see decompiled source. You then have to edit the low level IL assembly code to do anything, deal with all sorts of cryptic errors, and after that your code is stuffed into the game DLL.
