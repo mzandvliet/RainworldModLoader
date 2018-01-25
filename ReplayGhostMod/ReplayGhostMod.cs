@@ -6,8 +6,10 @@ using UnityEngine;
 
 /* Todo:
  * - On new game, there is desynch because start time behaves differently from shelter load (cinematic or fade-in, probably)
+ * - Everything is ok into region gates, but after that and shelter it stops working.
+ * - Game exit from menu creates new replay file?
  * - Multiple runs within a single launch of the game don't work, it just records the first.
- * - let user select run
+ * - let user select run (separate recording / playback folders)
  * 
  * Problem: if player room change triggers a sprite move, position of sprite in new room
  * seems to still be position from previous room. Why?
@@ -25,8 +27,6 @@ using UnityEngine;
  * - Record and render more slugcat state
  * 
  */
-
-
 
 namespace ReplayGhostMod {
     /// <summary>
@@ -76,6 +76,7 @@ namespace ReplayGhostMod {
         }
 
         public static void RainWorldGame_Ctor_Post(RainWorldGame __instance, ProcessManager manager) {
+            Debug.Log("RainWorldGame_Ctor_Post");
             _player = __instance.session.Players[0];
 
             if (!Directory.Exists(RecordingFolder)) {
@@ -93,6 +94,7 @@ namespace ReplayGhostMod {
 
         //private void ExitGame(bool asDeath, bool asQuit)
         public static void RainWorldGame_ExitGame_Pre(RainWorldGame __instance, bool asDeath, bool asQuit) {
+            Debug.Log("Exit RainWorldGame_ExitGame_Pre");
             _ghostGraphics.Destroy();
 
             _writer.WriteLine($"f={GetSessionTime()}");

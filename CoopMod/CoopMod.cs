@@ -3,6 +3,9 @@ using Harmony;
 using UnityEngine;
 
 /* Todo:
+ * - Hunter mode is broken: ask jeroen for details
+ * - RegionGates only trigger for 1st player
+ * 
  * - Provide an in-game (or config file) way of specifying slugcat type, like the below code
  * 
  * - Implement a mechanic that improves the play experience for off-screen slugcats. Multiple options:

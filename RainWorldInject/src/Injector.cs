@@ -9,6 +9,7 @@ using Mono.Cecil.Pdb;
 
 /* Todo:
  * - Ship injector with 0Harmony.dll, optionally include and install patched mono.dll
+ * - Modloader.dll and Harmony.dll should be part of distribution
  */
 
 namespace RainWorldInject {
