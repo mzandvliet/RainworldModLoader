@@ -1,8 +1,10 @@
 ﻿using System;
+using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using Harmony;
 using UnityEngine;
+using Debug = UnityEngine.Debug;
 
 /* Todo:
  * - On new game, there is desynch because start time behaves differently from shelter load (cinematic or fade-in, probably)

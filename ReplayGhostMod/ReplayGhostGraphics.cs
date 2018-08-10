@@ -1,11 +1,5 @@
 ﻿using UnityEngine;
 
-/* 
- * Todo: richer recording of slugcat, but that becomes much like building
- * a networking protocol
- */
-
-
 namespace ReplayGhostMod {
     public class ReplayGhostGraphics : CosmeticSprite {
         private readonly ReplayGhost _ghost;
@@ -25,7 +19,7 @@ namespace ReplayGhostMod {
         public override void DrawSprites(RoomCamera.SpriteLeaser sLeaser, RoomCamera rCam, float timeStacker, Vector2 camPos) {
             base.DrawSprites(sLeaser, rCam, timeStacker, camPos);
 
-            Vector2 vector = _ghost.Pos - camPos; //Vector2.Lerp(ghost.bodyChunks[0].lastPos, ghost.bodyChunks[0].pos, timeStacker)
+            Vector2 vector = _ghost.Pos - camPos;
             sLeaser.sprites[0].x = vector.x;
             sLeaser.sprites[0].y = vector.y;
             sLeaser.sprites[0].rotation = RWCustom.Custom.Angle(_ghost.Rot, Vector2.up);
