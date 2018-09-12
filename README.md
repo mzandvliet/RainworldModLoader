@@ -9,10 +9,6 @@ If you are a mod developer, please do get in touch and provide feedback! I'm on 
 
 (This same approach could be used to create mod loaders for any Unity game, really.)
 
-# Downloading and Playing Mods
-
-Not quite there yet! If you're not a developer buy just looking to play, stay tuned.
-
 # Developing Mods
 
 1. Download this repository
@@ -68,7 +64,6 @@ Three big wins:
 
 # Known Issues & Todo
 
-- Distributing the modloader and mods is not that easy. Haven't worked on this yet because there's other things to sort out first.
 - As soon as Harmony is used to patch the game's assembly at runtime, dnSpy's debugger can no longer respond to break points set in any patched methods. This is counterproductive, and a serious argument in favour of offline patching instead of runtime patching.
 - Having no mod API whatsoever and relying entirely on Harmony for creating your mod is not great. Should identify some common modding patterns (e.g. adding a new creature) and create easy to use infrastructure for this.
 
