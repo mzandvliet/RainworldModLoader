@@ -10,10 +10,12 @@ using Debug = UnityEngine.Debug;
  * - On new game, there is desynch because start time behaves differently from shelter load (cinematic or fade-in, probably)
  * - Everything is ok into region gates, but after that and possibly a shelter it stops working.
  * - Game exit from menu creates new replay file?
+ * - Actually, taking shelter into a new day creates a new replay file!
  * - Multiple runs within a single launch of the game don't work, it just records the first.
  * - let user select run (separate recording / playback folders)
  * 
- * 
+ * - Need to select replays that start from the same place we just loaded
+ * This system is currently unaware of starting location
  * 
  * - It'd be nice to see the ghost using shortcuts, with correct color
  * _currentGhostRoom.BlinkShortCut();
@@ -58,6 +60,8 @@ namespace ReplayGhostMod {
         }
 
         private static void PatchHooks() {
+            Debug.Log("PATCHHOOKS YO");
+
             var harmony = HarmonyInstance.Create("com.mzandvliet.rainworld.mod.replayghostmod");
 
             var ctor = typeof(RainWorldGame).GetConstructor(new Type[] { typeof(ProcessManager) });
@@ -92,7 +96,7 @@ namespace ReplayGhostMod {
 
         //private void ExitGame(bool asDeath, bool asQuit)
         public static void RainWorldGame_ExitGame_Pre(RainWorldGame __instance, bool asDeath, bool asQuit) {
-            Debug.Log("Exit RainWorldGame_ExitGame_Pre");
+            Debug.Log("RainWorldGame_ExitGame_Pre");
             _ghostGraphics.Destroy();
 
             _writer.WriteLine($"f={GetSessionTime()}");
@@ -102,6 +106,7 @@ namespace ReplayGhostMod {
         }
 
         public static void RainWorldGame_Update_Post(RainWorldGame __instance) {
+            Debug.Log("RainWorldGame_Update_Post");
             if (_player?.realizedCreature == null) {
                 return;
             }
@@ -287,7 +292,7 @@ namespace ReplayGhostMod {
 
         #endregion
 
-        public struct GhostState {
+        private struct GhostState {
             public float Time;
             public Vector2 Pos;
             public Vector2 Rot;
